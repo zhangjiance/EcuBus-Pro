@@ -469,13 +469,34 @@ export interface CanAddr extends CanMsgType {
   paddingValue: string
 }
 
+export interface CandleCapability {
+  feature: number
+  fclk_can: number
+  tseg1_min: number
+  tseg1_max: number
+  tseg2_min: number
+  tseg2_max: number
+  sjw_max: number
+  brp_min: number
+  brp_max: number
+  brp_inc: number
+}
+
 export interface CanDevice {
   label: string
   id: string
   handle: any
   serialNumber?: string
   busy?: boolean
-  candleRes?: boolean
+  /** Vendor-specific metadata, keyed by vendor name */
+  extra?: {
+    candle?: {
+      cap?: CandleCapability
+      dataCap?: CandleCapability
+      fdSupported?: boolean
+      Res?: boolean
+    }
+  }
 }
 
 export interface CanEventMap {
