@@ -303,8 +303,10 @@ static bool candle_dev_interal_open(candle_handle hdev)
         dev->last_error = CANDLE_ERR_GET_BITTIMING_CONST;
         goto winusb_free;
     }
-    candle_capability_extended_t cap_externd;
+    memset(&dev->data_bt_const, 0, sizeof(dev->data_bt_const));
     if (dev->bt_const.feature & CANDLE_MODE_FD) {
+        candle_capability_extended_t cap_externd;
+        memset(&cap_externd, 0, sizeof(cap_externd));
         if (!candle_ctrl_get_capability_externd(dev, 0, &cap_externd)) {
             dev->last_error = CANDLE_ERR_GET_DATA_BITTIMING_CONST;
             goto winusb_free;
@@ -446,65 +448,49 @@ bool __stdcall DLL candle_channel_set_bitrate(candle_handle hdev, uint8_t ch, ui
     // TODO ensure device is open, check channel count..
     candle_device_t *dev = (candle_device_t*)hdev;
 
-    if (dev->bt_const.fclk_can != 48000000) {
-        /* this function only works for the candleLight base clock of 48MHz */
+    uint32_t fclk = dev->bt_const.fclk_can;
+    if (fclk == 0) {
         dev->last_error = CANDLE_ERR_BITRATE_FCLK;
         return false;
     }
 
-    candle_bittiming_t t;
-    t.prop_seg = 1;
-    t.sjw = 1;
-    t.phase_seg1 = 13 - t.prop_seg;
-    t.phase_seg2 = 2;
+    uint32_t prop_seg = 1;
+    uint32_t phase_seg1 = 12;
+    uint32_t phase_seg2 = 2;
+    uint32_t sjw = 1;
+    uint32_t total_tq = 1 + prop_seg + phase_seg1 + phase_seg2;
 
-    switch (bitrate) {
-        case 10000:
-            t.brp = 300;
-            break;
+    uint32_t brp = fclk / (bitrate * total_tq);
 
-        case 20000:
-            t.brp = 150;
-            break;
-
-        case 50000:
-            t.brp = 60;
-            break;
-
-        case 83333:
-            t.brp = 36;
-            break;
-
-        case 100000:
-            t.brp = 30;
-            break;
-
-        case 125000:
-            t.brp = 24;
-            break;
-
-        case 250000:
-            t.brp = 12;
-            break;
-
-        case 500000:
-            t.brp = 6;
-            break;
-
-        case 800000:
-            t.brp = 4;
-            t.phase_seg1 = 12 - t.prop_seg;
-            t.phase_seg2 = 2;
-            break;
-
-        case 1000000:
-            t.brp = 3;
-            break;
-
-        default:
-            dev->last_error = CANDLE_ERR_BITRATE_UNSUPPORTED;
-            return false;
+    // Adjust BRP if it falls outside device limits
+    if (brp < dev->bt_const.brp_min) {
+        brp = dev->bt_const.brp_min;
     }
+    if (brp > dev->bt_const.brp_max) {
+        dev->last_error = CANDLE_ERR_BITRATE_UNSUPPORTED;
+        return false;
+    }
+
+    // Verify the resulting bitrate is reasonably close
+    uint32_t actual_bitrate = fclk / (brp * total_tq);
+    uint32_t error;
+    if (actual_bitrate > bitrate) {
+        error = actual_bitrate - bitrate;
+    } else {
+        error = bitrate - actual_bitrate;
+    }
+    // Allow up to 2% error for the convenience function
+    if (error > bitrate / 50) {
+        dev->last_error = CANDLE_ERR_BITRATE_UNSUPPORTED;
+        return false;
+    }
+
+    candle_bittiming_t t;
+    t.prop_seg = prop_seg;
+    t.phase_seg1 = phase_seg1;
+    t.phase_seg2 = phase_seg2;
+    t.sjw = sjw;
+    t.brp = brp;
 
     return candle_ctrl_set_bittiming(dev, ch, &t);
 }
@@ -544,15 +530,15 @@ bool __stdcall DLL candle_frame_send(candle_handle hdev, uint8_t ch, candle_fram
     candle_device_t *dev = (candle_device_t*)hdev;
 
     unsigned long bytes_sent = 0;
-    uint32_t size;
 
     frame->echo_id = 0;
     frame->channel = ch;
 
+    uint32_t size;
     if (frame->flags & CANDLE_FLAG_FD) {
-        size = 12 + sizeof(struct canfd);
+        size = 12 + 64;
     } else {
-        size = 12 + sizeof(struct classic_can);
+        size = 12 + 8;
     }
 
     bool rc = WinUsb_WritePipe(
