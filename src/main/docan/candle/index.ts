@@ -88,25 +88,6 @@ export class Candle_CAN extends CanBase {
       throw new Error('Clock frequency is not set')
     }
 
-    // 检查波特率配置
-    const CLOCK = Number(this.info.bitrate.clock) * 1000000
-
-    // 检查普通CAN波特率
-    if (info.bitrate.freq) {
-      const calcFreq = Math.floor(
-        CLOCK / (info.bitrate.preScaler * (1 + info.bitrate.timeSeg1 + info.bitrate.timeSeg2))
-      )
-      // 允许1%的误差
-      if (Math.abs(calcFreq - info.bitrate.freq) / info.bitrate.freq > 0.01) {
-        throw new Error(
-          `Invalid CAN bitrate config: expected ${info.bitrate.freq}, got ${calcFreq}. ` +
-            `preScaler=${info.bitrate.preScaler}, ` +
-            `timeSeg1=${info.bitrate.timeSeg1}, ` +
-            `timeSeg2=${info.bitrate.timeSeg2}`
-        )
-      }
-    }
-
     this.event = new EventEmitter()
 
     this.log = new CanLOG('CANABLE', info.name, this.id, this.event)
@@ -116,9 +97,36 @@ export class Candle_CAN extends CanBase {
     }
 
     try {
-      // Check baud rate parameters against device capabilities
+      // Use the device's actual clock frequency from BT_CONST for all calculations
       const cap = this.target.bt_const
       const data_cap = this.target.data_bt_const
+      const userClock = Number(this.info.bitrate.clock) * 1000000
+
+      // If user-specified clock doesn't match device's actual fclk_can,
+      // auto-correct to use the device's clock (with a warning)
+      if (userClock != cap.fclk_can) {
+        sysLog.warn(
+          `Clock frequency auto-corrected: user specified ${userClock} Hz, device reports ${cap.fclk_can} Hz. Using device clock.`
+        )
+      }
+      const actualClock = cap.fclk_can
+
+      // Validate baud rate config against the device's actual clock
+      if (info.bitrate.freq) {
+        const calcFreq = Math.floor(
+          actualClock /
+            (info.bitrate.preScaler * (1 + info.bitrate.timeSeg1 + info.bitrate.timeSeg2))
+        )
+        // Allow 1% error tolerance
+        if (Math.abs(calcFreq - info.bitrate.freq) / info.bitrate.freq > 0.01) {
+          throw new Error(
+            `Invalid CAN bitrate config: expected ${info.bitrate.freq} Hz, got ${calcFreq} Hz (fclk=${actualClock}). ` +
+              `preScaler=${info.bitrate.preScaler}, ` +
+              `timeSeg1=${info.bitrate.timeSeg1}, ` +
+              `timeSeg2=${info.bitrate.timeSeg2}`
+          )
+        }
+      }
       if (Candle_CAN.candleOpened == false) {
         const candleInfo = {
           channel_count: this.target.dconf.icount,
@@ -158,12 +166,6 @@ export class Candle_CAN extends CanBase {
         }
         Candle_CAN.candleOpened = true
       }
-      if (CLOCK != cap.fclk_can) {
-        throw new Error(
-          `Clock frequency mismatch: expected ${CLOCK}, got ${cap.fclk_can}, open fail, please modify parameters and start again`
-        )
-      }
-      // Check time segments
       if (info.bitrate.timeSeg1 < cap.tseg1_min || info.bitrate.timeSeg1 > cap.tseg1_max) {
         throw new Error(
           `Time segment 1 (${info.bitrate.timeSeg1}) out of valid range [${cap.tseg1_min}-${cap.tseg1_max}], open fail, please modify parameters and start again`
@@ -243,6 +245,14 @@ export class Candle_CAN extends CanBase {
       let flag = 0
       //canfd config
       if (info.canfd && info.bitratefd) {
+        // Verify device actually supports CAN FD before proceeding
+        // (GS_CAN_FEATURE_FD = BIT(8) = 0x100, same as CANDLE_MODE_FD)
+        if (!(cap.feature & 0x100)) {
+          throw new Error(
+            'CAN FD is enabled in configuration but the device does not support CAN FD. ' +
+              'Please disable CAN FD in the hardware settings, or use a CAN FD capable device.'
+          )
+        }
         //check
         const canfd_cap = this.target.data_bt_const
         if (
@@ -521,11 +531,53 @@ export class Candle_CAN extends CanBase {
         // 直接使用设备对象获取友好名称
         const pathStr = Candle.GetDevicePath(device)
         const friendlyNameStr = Candle.GetDeviceFriendlyName(device)
+
+        // Extract capability info from device bt_const (already populated during scan)
+        const cap = device.bt_const
+        const candleCap = {
+          feature: cap.feature,
+          fclk_can: cap.fclk_can,
+          tseg1_min: cap.tseg1_min,
+          tseg1_max: cap.tseg1_max,
+          tseg2_min: cap.tseg2_min,
+          tseg2_max: cap.tseg2_max,
+          sjw_max: cap.sjw_max,
+          brp_min: cap.brp_min,
+          brp_max: cap.brp_max,
+          brp_inc: cap.brp_inc
+        }
+
+        let candleDataCap = null
+        // Check if device supports CAN FD (feature bit 8 = 0x100)
+        if (cap.feature & 0x100) {
+          const dataCap = device.data_bt_const
+          candleDataCap = {
+            feature: dataCap.feature,
+            fclk_can: dataCap.fclk_can,
+            tseg1_min: dataCap.tseg1_min,
+            tseg1_max: dataCap.tseg1_max,
+            tseg2_min: dataCap.tseg2_min,
+            tseg2_max: dataCap.tseg2_max,
+            sjw_max: dataCap.sjw_max,
+            brp_min: dataCap.brp_min,
+            brp_max: dataCap.brp_max,
+            brp_inc: dataCap.brp_inc
+          }
+        }
+
         devices.push({
           label: friendlyNameStr,
           id: `Candle_${device.interfaceNumber}`,
           handle: device.interfaceNumber,
-          serialNumber: pathStr
+          serialNumber: pathStr,
+          extra: {
+            candle: {
+              cap: candleCap,
+              dataCap: candleDataCap || undefined,
+              fdSupported: !!(cap.feature & 0x100),
+              Res: !!(cap.feature & 0x800)
+            }
+          }
           // serialNumber: pathStr
         })
       }
