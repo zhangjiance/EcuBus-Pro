@@ -118,16 +118,14 @@ function calculate() {
   const tseg2Min = props.ability.tsg2?.min || 1
   const tseg2Max = props.ability.tsg2?.max || 128
 
-  // Calculate target number of time quanta
-  const targetTq = clock / bitrate
-
   // Enumerate all possible combinations
   for (let presc = prescalerMin; presc <= prescalerMax; presc++) {
-    // Skip if clock/prescaler is not integer
+    // Clock must be divisible by prescaler
     if (clock % presc !== 0) continue
 
-    // Calculate total time quanta for this prescaler
-    const totalTq = Math.round(targetTq / presc)
+    // Total time quanta must be an exact integer for exact baud rate match
+    const totalTq = clock / (presc * bitrate)
+    if (totalTq !== Math.floor(totalTq)) continue
 
     // Enumerate all possible TSEG1 values
     for (let t1 = tseg1Min; t1 <= tseg1Max; t1++) {
@@ -156,6 +154,29 @@ function calculate() {
 
   // Sort results by sp
   results.value = newResults.sort((a, b) => a.sp - b.sp)
+
+  // Auto-select the best row: baud rate is already exact, prefer sample point in 75%-85%
+  if (newResults.length > 0) {
+    // First try to find rows within [75, 85] range
+    const inRange = newResults.filter((r) => r.sp >= 75 && r.sp <= 85)
+    if (inRange.length > 0) {
+      // Pick the one closest to 80% (center of ideal range)
+      const TARGET_SP = 80
+      let best = inRange[0]
+      for (const r of inRange) {
+        if (Math.abs(r.sp - TARGET_SP) < Math.abs(best.sp - TARGET_SP)) best = r
+      }
+      selectedRow.value = best
+    } else {
+      // Fallback: closest to 80% among all results
+      const TARGET_SP = 80
+      let best = newResults[0]
+      for (const r of newResults) {
+        if (Math.abs(r.sp - TARGET_SP) < Math.abs(best.sp - TARGET_SP)) best = r
+      }
+      selectedRow.value = best
+    }
+  }
 }
 
 function handleCurrentChange(row: CalculatorResult) {
