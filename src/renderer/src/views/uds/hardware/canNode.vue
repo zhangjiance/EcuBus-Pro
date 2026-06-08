@@ -69,7 +69,7 @@
       </el-select>
     </el-form-item>
     <el-form-item
-      v-else-if="props.vendor == 'candle'"
+      v-else-if="props.vendor == 'candle' && getSelectedCandleDevice()?.extra?.candle?.Res"
       :label="i18next.t('uds.hardware.canNode.labels.res120Enable')"
       prop="candleRes"
       :placeholder="i18next.t('uds.hardware.canNode.options.disable')"
@@ -118,12 +118,13 @@
     </el-divider>
 
     <el-form-item label-width="0">
-      <el-col :span="12">
+      <el-col v-if="showCanFdCheckbox" :span="12">
         <el-form-item :label="i18next.t('uds.hardware.canNode.labels.canFdEnable')" prop="canfd">
           <el-checkbox v-model="data.canfd" @change="canFdChange" />
         </el-form-item>
       </el-col>
-      <el-col :span="12">
+      <!-- Non-candle: clock frequency dropdown -->
+      <el-col v-if="props.vendor !== 'candle'" :span="12">
         <el-form-item
           v-if="vendorConfigLimit.clock"
           :label="i18next.t('uds.hardware.canNode.labels.clockFreq')"
@@ -136,10 +137,7 @@
                 <template #content>
                   {{ i18next.t('uds.hardware.canNode.tooltips.clockFreq') }}
                 </template>
-
-                <el-icon>
-                  <InfoFilled />
-                </el-icon>
+                <el-icon><InfoFilled /></el-icon>
               </el-tooltip>
             </span>
           </template>
@@ -160,80 +158,60 @@
           </el-select>
         </el-form-item>
       </el-col>
-      <!-- <el-col :span="12">
-        <el-form-item label="DLC" prop="dlc">
-          <template #label="{ label }">
-            <span class="vm">
-              <span style="margin-right: 2px">{{ label }}</span>
-              <el-tooltip>
-                <template #content>
-                  CAN:0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9-15:8<br>
-                  CAN-FD:0:0,1:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:12,10:16,11:20,12:24,13:32,14:48,15:64
-                </template>
-
-                <el-icon>
-                  <InfoFilled />
-                </el-icon>
-              </el-tooltip>
-            </span>
-          </template>
-          <el-input-number :min="8" :max="15" v-model="data.dlc" controls-position="right" />
+      <!-- Candle: clock is fixed, shown as info tag -->
+      <el-col v-if="showCandleTimingTable" :span="12">
+        <el-form-item :label="i18next.t('uds.hardware.canNode.labels.clockFreq')">
+          <el-tag type="info"
+            >{{ selectedCandleClock ?? '?' }} MHz（{{
+              i18next.t('uds.hardware.canNode.labels.hardware')
+            }}）</el-tag
+          >
         </el-form-item>
-      </el-col> -->
+      </el-col>
     </el-form-item>
-    <!-- <el-form-item label-width="0">
 
-      <el-col :span="12">
-        <el-form-item label="Padding Enable" prop="padding">
-          <el-checkbox v-model="data.padding" />
-        </el-form-item>
-      </el-col>
-      <el-col :span="12">
-        <el-form-item label="Padding Value" prop="paddingValue">
-          <el-input v-model="data.paddingValue" :disabled="!data.padding" />
-        </el-form-item>
-      </el-col>
-
-    </el-form-item> -->
+    <!-- vxe-grid for all vendors (candle uses same style + calculator button) -->
     <el-form-item label-width="0" prop="bitrate">
       <vxe-grid v-bind="gridOptions" style="width: 100%">
-        <template #edit_freq="{ row }">
-          <el-input v-model.number="row.freq" style="width: 100%" />
-        </template>
+        <template #edit_freq="{ row }"
+          ><el-input v-model.number="row.freq" style="width: 100%"
+        /></template>
         <template #default_time="{ row }">
-          <el-tooltip effect="light" placement="bottom">
-            <template #content>
-              {{ i18next.t('uds.hardware.canNode.tooltips.bitTimingCalculator') }}
-            </template>
-            <el-button type="primary" size="small" plain @click="showCalculator(row)">
-              <Icon :icon="tableIcon" />
-            </el-button>
+          <el-tooltip effect="light" placement="bottom"
+            ><template #content>{{
+              i18next.t('uds.hardware.canNode.tooltips.bitTimingCalculator')
+            }}</template>
+            <el-button type="primary" size="small" plain @click="showCalculator(row)"
+              ><Icon :icon="tableIcon"
+            /></el-button>
           </el-tooltip>
         </template>
-        <template #default_clock="{ row, rowIndex }">
-          <span v-if="rowIndex == 0">{{ row.clock }}</span>
-          <span v-else>{{ data.bitrate.clock }}</span>
-        </template>
-        <template #edit_preScaler="{ row }">
-          <el-input-number v-model="row.preScaler" controls-position="right" />
-        </template>
-        <template #edit_sjw="{ row }">
-          <el-input-number v-model="row.sjw" :min="1" controls-position="right" />
-        </template>
-        <template #edit_timeSeg1="{ row }">
-          <el-input-number v-model="row.timeSeg1" controls-position="right" />
-        </template>
-        <template #edit_timeSeg2="{ row }">
-          <el-input-number v-model="row.timeSeg2" controls-position="right" />
-        </template>
-        <template #edit_zlg="{ row, rowIndex }">
-          <el-input v-if="rowIndex == 0" v-model="row.zlgSpec" />
-        </template>
-        <template #default_baudrate="{ row, rowIndex }">
-          <el-tag>{{ getBaudrateSP(row, rowIndex) }}</el-tag>
-        </template>
+        <template #default_clock="{ row, rowIndex }"
+          ><span v-if="rowIndex == 0">{{ row.clock }}</span
+          ><span v-else>{{ data.bitrate.clock }}</span></template
+        >
+        <template #edit_preScaler="{ row }"
+          ><el-input-number v-model="row.preScaler" controls-position="right"
+        /></template>
+        <template #edit_sjw="{ row }"
+          ><el-input-number v-model="row.sjw" :min="1" controls-position="right"
+        /></template>
+        <template #edit_timeSeg1="{ row }"
+          ><el-input-number v-model="row.timeSeg1" controls-position="right"
+        /></template>
+        <template #edit_timeSeg2="{ row }"
+          ><el-input-number v-model="row.timeSeg2" controls-position="right"
+        /></template>
+        <template #edit_zlg="{ row, rowIndex }"
+          ><el-input v-if="rowIndex == 0" v-model="row.zlgSpec"
+        /></template>
+        <template #default_baudrate="{ row, rowIndex }"
+          ><el-tag>{{ getBaudrateSP(row, rowIndex) }}</el-tag></template
+        >
       </vxe-grid>
     </el-form-item>
+
+    <!-- Candle: same vxe-grid style, clock is read-only tag -->
     <el-divider content-position="left">
       {{ i18next.t('uds.hardware.canNode.sections.database') }}
     </el-divider>
@@ -734,7 +712,89 @@ const configInfo: Record<CanVendor, any> = {
   }
 }
 
+/** Look up the currently selected candle device from the device list */
+function getSelectedCandleDevice(): CanDevice | undefined {
+  if (props.vendor !== 'candle') return undefined
+  // Explicitly check for empty string or null/undefined (handle can be 0!)
+  if (data.value.handle === '' || data.value.handle == null) return undefined
+  return deviceList.value.find((d) => d.handle === data.value.handle)
+}
+
+/** Build dynamic candle config from the selected device's BT_CONST / BT_CONST_EXT capabilities */
+function getCandleDynamicConfig(isFd: boolean) {
+  const dev = getSelectedCandleDevice()
+  const cap = dev?.extra?.candle?.cap
+  if (!cap) {
+    // No device selected yet, fallback to static config
+    return configInfo.candle[isFd ? 'canFd' : 'can']
+  }
+
+  const clockMhz = Math.round(cap.fclk_can / 1000000)
+  const clockStr = String(clockMhz)
+
+  const arbLimits = {
+    preScaler: { min: cap.brp_min, max: cap.brp_max },
+    tsg1: { min: cap.tseg1_min, max: cap.tseg1_max },
+    tsg2: { min: cap.tseg2_min, max: cap.tseg2_max }
+  }
+
+  const baseConfig = {
+    clock: [{ clock: clockStr, name: `${clockStr} (HW)` }],
+    ...arbLimits,
+    bitrate: {
+      sjw: Math.min(1, cap.sjw_max),
+      timeSeg1: Math.min(13, cap.tseg1_max),
+      timeSeg2: Math.max(2, cap.tseg2_min),
+      preScaler: Math.min(10, cap.brp_max),
+      freq: 500000,
+      clock: clockStr
+    }
+  }
+
+  if (isFd && dev?.extra?.candle?.dataCap) {
+    const dataCap = dev.extra.candle?.dataCap
+    // Only add FD defaults; validation limits stay from bt_const (baseConfig)
+    // so both arb and data rows are validated against arbitration constraints
+    return {
+      ...baseConfig,
+      bitratefd: {
+        sjw: Math.min(1, dataCap.sjw_max),
+        timeSeg1: Math.min(7, dataCap.tseg1_max),
+        timeSeg2: Math.max(2, dataCap.tseg2_min),
+        preScaler: Math.min(4, dataCap.brp_max),
+        freq: 2000000,
+        clock: clockStr
+      }
+    }
+  }
+
+  return baseConfig
+}
+
+const showCandleTimingTable = computed(() => {
+  if (props.vendor !== 'candle') return false
+  if (data.value.handle === '' || data.value.handle == null) return false
+  const dev = getSelectedCandleDevice()
+  return !!dev?.extra?.candle?.cap
+})
+
+const showCanFdCheckbox = computed(() => {
+  if (props.vendor !== 'candle') return true
+  const dev = getSelectedCandleDevice()
+  return !!dev?.extra?.candle?.fdSupported
+})
+
+const selectedCandleClock = computed(() => {
+  if (props.vendor !== 'candle') return null
+  const dev = getSelectedCandleDevice()
+  if (!dev?.extra?.candle?.cap || !dev.extra.candle.cap.fclk_can) return null
+  return Math.round(dev.extra.candle.cap.fclk_can / 1000000)
+})
+
 const vendorConfigLimit = computed(() => {
+  if (props.vendor === 'candle') {
+    return getCandleDynamicConfig(data.value.canfd)
+  }
   return configInfo[props.vendor][data.value.canfd ? 'canFd' : 'can']
 })
 
@@ -926,6 +986,126 @@ function getBaudrateSP(speed: CanBitrate, index: number) {
 
 const deviceList = ref<CanDevice[]>([])
 const deviceLoading = ref(false)
+
+// Sync clock frequency from the selected candle device's actual hardware capability.
+// Watches both deviceList (async load) and handle (user selection) for candle devices only.
+/** Pick the best (tseg1, tseg2, prescaler) for candle hardware that exactly matches freq */
+function autoPickCandleTiming(
+  freq: number,
+  cap: {
+    brp_min: number
+    brp_max: number
+    tseg1_min: number
+    tseg1_max: number
+    tseg2_min: number
+    tseg2_max: number
+    sjw_max: number
+  },
+  clockHz: number
+) {
+  const results: { t1: number; t2: number; sp: number; sjw: number; presc: number }[] = []
+  for (let presc = cap.brp_min; presc <= cap.brp_max; presc++) {
+    if (clockHz % presc !== 0) continue
+    const totalTq = clockHz / (presc * freq)
+    if (totalTq !== Math.floor(totalTq)) continue
+    for (let t1 = cap.tseg1_min; t1 <= cap.tseg1_max; t1++) {
+      const t2 = totalTq - t1 - 1
+      if (t2 < cap.tseg2_min || t2 > cap.tseg2_max) continue
+      if (t1 < t2) continue
+      results.push({
+        t1,
+        t2,
+        sp: Math.round(((t1 + 1) / (t1 + t2 + 1)) * 10000) / 100,
+        sjw: Math.min(1, cap.sjw_max),
+        presc
+      })
+    }
+  }
+  if (!results.length) return null
+  // Prefer sample point in 75%-85%, closest to 80%
+  const inRange = results.filter((r) => r.sp >= 75 && r.sp <= 85)
+  const pool = inRange.length > 0 ? inRange : results
+  let best = pool[0]
+  for (const r of pool) {
+    if (Math.abs(r.sp - 80) < Math.abs(best.sp - 80)) best = r
+  }
+  return best
+}
+
+watch([deviceList, () => data.value.handle], () => {
+  if (props.vendor !== 'candle') return
+  const dev = getSelectedCandleDevice()
+  if (!dev?.extra?.candle?.cap) return
+  // Disable CAN FD if the selected device doesn't support it
+  if (!dev.extra.candle?.fdSupported && data.value.canfd) {
+    data.value.canfd = false
+  }
+  const clockMhz = Math.round(dev.extra.candle.cap.fclk_can / 1000000)
+  const clockStr = String(clockMhz)
+  const clockChanged = data.value.bitrate.clock !== clockStr
+  if (clockChanged) {
+    data.value.bitrate.clock = clockStr
+    if (data.value.bitratefd) {
+      data.value.bitratefd.clock = clockStr
+    }
+  }
+  // Auto-pick timing params that match the current freq with device's actual clock
+  const best = autoPickCandleTiming(
+    data.value.bitrate.freq,
+    dev.extra.candle.cap,
+    clockMhz * 1000000
+  )
+  if (best) {
+    data.value.bitrate.timeSeg1 = best.t1
+    data.value.bitrate.timeSeg2 = best.t2
+    data.value.bitrate.sjw = best.sjw
+    data.value.bitrate.preScaler = best.presc
+  }
+  nextTick(() => {
+    ruleFormRef.value?.validateField('bitrate')
+    if (data.value.canfd) {
+      ruleFormRef.value?.validateField('bitratefd')
+    }
+  })
+})
+
+// When user edits the baud rate, auto-pick optimal timing for candle
+watch(
+  () => [data.value.bitrate.freq, data.value.bitratefd?.freq],
+  () => {
+    if (props.vendor !== 'candle') return
+    const dev = getSelectedCandleDevice()
+    if (!dev?.extra?.candle?.cap) return
+    const clockHz = (selectedCandleClock.value ?? 0) * 1000000
+    if (!clockHz) return
+
+    const best = autoPickCandleTiming(data.value.bitrate.freq, dev.extra.candle.cap, clockHz)
+    if (best) {
+      data.value.bitrate.timeSeg1 = best.t1
+      data.value.bitrate.timeSeg2 = best.t2
+      data.value.bitrate.sjw = best.sjw
+      data.value.bitrate.preScaler = best.presc
+    }
+    if (data.value.canfd && data.value.bitratefd && dev.extra.candle?.dataCap) {
+      const bestFd = autoPickCandleTiming(
+        data.value.bitratefd.freq,
+        dev.extra.candle.dataCap,
+        clockHz
+      )
+      if (bestFd) {
+        data.value.bitratefd.timeSeg1 = bestFd.t1
+        data.value.bitratefd.timeSeg2 = bestFd.t2
+        data.value.bitratefd.sjw = bestFd.sjw
+        data.value.bitratefd.preScaler = bestFd.presc
+      }
+    }
+    nextTick(() => {
+      ruleFormRef.value?.validateField('bitrate')
+      if (data.value.canfd) ruleFormRef.value?.validateField('bitratefd')
+    })
+  }
+)
+
 function getDevice(visible: boolean) {
   if (visible) {
     deviceLoading.value = true
@@ -958,7 +1138,12 @@ const error1 = ref(false)
 const bitrateCheck = (rule: any, value: any, callback: any) => {
   error0.value = false
   error1.value = false
-  if (props.vendor == 'peak' || props.vendor == 'kvaser' || props.vendor == 'toomoss') {
+  if (
+    props.vendor == 'peak' ||
+    props.vendor == 'kvaser' ||
+    props.vendor == 'toomoss' ||
+    props.vendor == 'candle'
+  ) {
     if (data.value.bitrate.clock == undefined) {
       callback(new Error(i18next.t('uds.hardware.canNode.validation.selectClock')))
     }
@@ -1083,7 +1268,12 @@ const bitrateCheck = (rule: any, value: any, callback: any) => {
         }
       }
     }
-    if (props.vendor == 'kvaser' || props.vendor == 'toomoss' || props.vendor == 'peak') {
+    if (
+      props.vendor == 'kvaser' ||
+      props.vendor == 'toomoss' ||
+      props.vendor == 'peak' ||
+      props.vendor == 'candle'
+    ) {
       const calcFreq =
         (Number(data.value.bitrate.clock || 40) * 1000000) /
         (data.value.bitrate.preScaler *
