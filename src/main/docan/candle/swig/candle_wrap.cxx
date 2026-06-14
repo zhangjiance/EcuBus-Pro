@@ -1274,30 +1274,32 @@ Napi::Value SWIG_NAPI_AppendOutput(Napi::Env env, Napi::Value result, Napi::Valu
 #define SWIGTYPE_p_candle_list_t swig_types[19]
 #define SWIGTYPE_p_candle_mode_t swig_types[20]
 #define SWIGTYPE_p_canfd swig_types[21]
-#define SWIGTYPE_p_canlde_rx_urb swig_types[22]
-#define SWIGTYPE_p_char swig_types[23]
-#define SWIGTYPE_p_classic_can swig_types[24]
-#define SWIGTYPE_p_float swig_types[25]
-#define SWIGTYPE_p_int swig_types[26]
-#define SWIGTYPE_p_long swig_types[27]
-#define SWIGTYPE_p_long_long swig_types[28]
-#define SWIGTYPE_p_msg_t swig_types[29]
-#define SWIGTYPE_p_p_char swig_types[30]
-#define SWIGTYPE_p_p_unsigned_long swig_types[31]
-#define SWIGTYPE_p_p_void swig_types[32]
-#define SWIGTYPE_p_short swig_types[33]
-#define SWIGTYPE_p_signed___int64 swig_types[34]
-#define SWIGTYPE_p_signed_char swig_types[35]
-#define SWIGTYPE_p_unsigned___int64 swig_types[36]
-#define SWIGTYPE_p_unsigned_char swig_types[37]
-#define SWIGTYPE_p_unsigned_int swig_types[38]
-#define SWIGTYPE_p_unsigned_long swig_types[39]
-#define SWIGTYPE_p_unsigned_long_long swig_types[40]
-#define SWIGTYPE_p_unsigned_short swig_types[41]
-#define SWIGTYPE_p_void swig_types[42]
-#define SWIGTYPE_p_wchar_t swig_types[43]
-static swig_type_info *swig_types[45];
-static swig_module_info swig_module = {swig_types, 44, 0, 0, 0, 0};
+#define SWIGTYPE_p_canfd_ts swig_types[22]
+#define SWIGTYPE_p_canlde_rx_urb swig_types[23]
+#define SWIGTYPE_p_char swig_types[24]
+#define SWIGTYPE_p_classic_can swig_types[25]
+#define SWIGTYPE_p_classic_can_ts swig_types[26]
+#define SWIGTYPE_p_float swig_types[27]
+#define SWIGTYPE_p_int swig_types[28]
+#define SWIGTYPE_p_long swig_types[29]
+#define SWIGTYPE_p_long_long swig_types[30]
+#define SWIGTYPE_p_msg_t swig_types[31]
+#define SWIGTYPE_p_p_char swig_types[32]
+#define SWIGTYPE_p_p_unsigned_long swig_types[33]
+#define SWIGTYPE_p_p_void swig_types[34]
+#define SWIGTYPE_p_short swig_types[35]
+#define SWIGTYPE_p_signed___int64 swig_types[36]
+#define SWIGTYPE_p_signed_char swig_types[37]
+#define SWIGTYPE_p_unsigned___int64 swig_types[38]
+#define SWIGTYPE_p_unsigned_char swig_types[39]
+#define SWIGTYPE_p_unsigned_int swig_types[40]
+#define SWIGTYPE_p_unsigned_long swig_types[41]
+#define SWIGTYPE_p_unsigned_long_long swig_types[42]
+#define SWIGTYPE_p_unsigned_short swig_types[43]
+#define SWIGTYPE_p_void swig_types[44]
+#define SWIGTYPE_p_wchar_t swig_types[45]
+static swig_type_info *swig_types[47];
+static swig_module_info swig_module = {swig_types, 46, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -3202,14 +3204,6 @@ Napi::Value _wrap_classic_can_t_data_get(const Napi::CallbackInfo &);
 // jsnapi_class_setter_declaration
 void _wrap_classic_can_t_data_set(const Napi::CallbackInfo &, const Napi::Value &);
 // jsnapi_class_method_declaration
-Napi::Value _wrap_classic_can_t_timestamp_us_get(const Napi::CallbackInfo &);
-// jsnapi_class_setter_declaration
-void _wrap_classic_can_t_timestamp_us_set(const Napi::CallbackInfo &, const Napi::Value &);
-// jsnapi_class_method_declaration
-Napi::Value _wrap_classic_can_t_dummy_get(const Napi::CallbackInfo &);
-// jsnapi_class_setter_declaration
-void _wrap_classic_can_t_dummy_set(const Napi::CallbackInfo &, const Napi::Value &);
-// jsnapi_class_method_declaration
 Napi::Value _wrap_new_classic_can_t(const Napi::CallbackInfo &);
 virtual ~_exports_classic_can_t_templ();
 // jsnapi_class_epilogue_template
@@ -3275,22 +3269,97 @@ void _exports_classic_can_t_inst::GetMembers(
         &_exports_classic_can_t_templ::_wrap_classic_can_t_data_set,
         static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
     });
+  
+  /* add static class functions and variables */
+  
+}
+// jsnapi_class_prologue_template
+template <typename SWIG_OBJ_WRAP>
+class _exports_classic_can_ts_t_templ : public SWIG_NAPI_ObjectWrap_templ<SWIG_OBJ_WRAP> {
+public:
+  _exports_classic_can_ts_t_templ(const Napi::CallbackInfo &);
+_exports_classic_can_ts_t_templ(bool, const Napi::CallbackInfo &);
+// jsnapi_class_method_declaration
+Napi::Value _wrap_classic_can_ts_t_data_get(const Napi::CallbackInfo &);
+// jsnapi_class_setter_declaration
+void _wrap_classic_can_ts_t_data_set(const Napi::CallbackInfo &, const Napi::Value &);
+// jsnapi_class_method_declaration
+Napi::Value _wrap_classic_can_ts_t_timestamp_us_get(const Napi::CallbackInfo &);
+// jsnapi_class_setter_declaration
+void _wrap_classic_can_ts_t_timestamp_us_set(const Napi::CallbackInfo &, const Napi::Value &);
+// jsnapi_class_method_declaration
+Napi::Value _wrap_new_classic_can_ts_t(const Napi::CallbackInfo &);
+virtual ~_exports_classic_can_ts_t_templ();
+// jsnapi_class_epilogue_template
+static void JS_veto_set_static_variable(const Napi::CallbackInfo &, const Napi::Value &);
+void JS_veto_set_variable(const Napi::CallbackInfo &, const Napi::Value &);
+};
+
+template <typename SWIG_OBJ_WRAP>
+void _exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::JS_veto_set_static_variable(const Napi::CallbackInfo &info, const Napi::Value &value) {
+SWIG_NAPI_Raise(info.Env(), "Tried to write read-only variable.");
+}
+
+template <typename SWIG_OBJ_WRAP>
+void _exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::JS_veto_set_variable(const Napi::CallbackInfo &info, const Napi::Value &value) {
+SWIG_NAPI_Raise(info.Env(), "Tried to write read-only variable.");
+}
+// jsnapi_class_instance
+class _exports_classic_can_ts_t_inst : public _exports_classic_can_ts_t_templ<_exports_classic_can_ts_t_inst> {
+public:
+  using _exports_classic_can_ts_t_templ::_exports_classic_can_ts_t_templ;
+  virtual ~_exports_classic_can_ts_t_inst() {
+    
+  };
+  static void GetMembers(
+    Napi::Env,
+    std::map<std::string, _exports_classic_can_ts_t_templ::PropertyDescriptor> &,
+    std::map<std::string, _exports_classic_can_ts_t_templ::PropertyDescriptor> &
+    );
+  static Napi::Function GetClass(Napi::Env);
+};
+/* Class: classic_can_ts_t (_exports_classic_can_ts_t) */
+// jsnapi_getclass
+Napi::Function _exports_classic_can_ts_t_inst::GetClass(Napi::Env env) {
+  std::map<std::string, _exports_classic_can_ts_t_templ::PropertyDescriptor> members, staticMembers;
+  GetMembers(env, members, staticMembers);
+  
+  std::vector<_exports_classic_can_ts_t_inst::PropertyDescriptor> symbolTable;
+  for (auto it = members.begin(); it != members.end(); it++)
+  symbolTable.push_back(it->second);
+  for (auto it = staticMembers.begin(); it != staticMembers.end(); it++)
+  symbolTable.push_back(it->second);
+  
+  return Napi::ObjectWrap<_exports_classic_can_ts_t_inst>::DefineClass(env, "classic_can_ts_t", symbolTable);
+}
+
+void _exports_classic_can_ts_t_inst::GetMembers(
+  Napi::Env env,
+  std::map<std::string, _exports_classic_can_ts_t_templ::PropertyDescriptor> &members,
+  std::map<std::string, _exports_classic_can_ts_t_templ::PropertyDescriptor> &staticMembers
+  ) {
+  std::map<std::string, SWIG_NAPI_ObjectWrap_templ<SWIG_NAPI_ObjectWrap_inst>::PropertyDescriptor> baseMembers, baseStaticMembers;
+  SWIG_NAPI_ObjectWrap_inst::GetMembers(env, baseMembers, baseStaticMembers);
+  members.insert(baseMembers.begin(), baseMembers.end());
+  staticMembers.insert(staticMembers.begin(), staticMembers.end());
+  
+  /* register wrapper functions */
+  // jsnapi_register_member_variable
+  members.erase("data");
+  members.insert({
+    "data",
+      _exports_classic_can_ts_t_templ::InstanceAccessor("data",
+        &_exports_classic_can_ts_t_templ::_wrap_classic_can_ts_t_data_get,
+        &_exports_classic_can_ts_t_templ::_wrap_classic_can_ts_t_data_set,
+        static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
+    });
   // jsnapi_register_member_variable
   members.erase("timestamp_us");
   members.insert({
     "timestamp_us",
-      _exports_classic_can_t_templ::InstanceAccessor("timestamp_us",
-        &_exports_classic_can_t_templ::_wrap_classic_can_t_timestamp_us_get,
-        &_exports_classic_can_t_templ::_wrap_classic_can_t_timestamp_us_set,
-        static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
-    });
-  // jsnapi_register_member_variable
-  members.erase("dummy");
-  members.insert({
-    "dummy",
-      _exports_classic_can_t_templ::InstanceAccessor("dummy",
-        &_exports_classic_can_t_templ::_wrap_classic_can_t_dummy_get,
-        &_exports_classic_can_t_templ::_wrap_classic_can_t_dummy_set,
+      _exports_classic_can_ts_t_templ::InstanceAccessor("timestamp_us",
+        &_exports_classic_can_ts_t_templ::_wrap_classic_can_ts_t_timestamp_us_get,
+        &_exports_classic_can_ts_t_templ::_wrap_classic_can_ts_t_timestamp_us_set,
         static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
     });
   
@@ -3307,10 +3376,6 @@ _exports_canfd_t_templ(bool, const Napi::CallbackInfo &);
 Napi::Value _wrap_canfd_t_data_get(const Napi::CallbackInfo &);
 // jsnapi_class_setter_declaration
 void _wrap_canfd_t_data_set(const Napi::CallbackInfo &, const Napi::Value &);
-// jsnapi_class_method_declaration
-Napi::Value _wrap_canfd_t_timestamp_us_get(const Napi::CallbackInfo &);
-// jsnapi_class_setter_declaration
-void _wrap_canfd_t_timestamp_us_set(const Napi::CallbackInfo &, const Napi::Value &);
 // jsnapi_class_method_declaration
 Napi::Value _wrap_new_canfd_t(const Napi::CallbackInfo &);
 virtual ~_exports_canfd_t_templ();
@@ -3377,13 +3442,97 @@ void _exports_canfd_t_inst::GetMembers(
         &_exports_canfd_t_templ::_wrap_canfd_t_data_set,
         static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
     });
+  
+  /* add static class functions and variables */
+  
+}
+// jsnapi_class_prologue_template
+template <typename SWIG_OBJ_WRAP>
+class _exports_canfd_ts_t_templ : public SWIG_NAPI_ObjectWrap_templ<SWIG_OBJ_WRAP> {
+public:
+  _exports_canfd_ts_t_templ(const Napi::CallbackInfo &);
+_exports_canfd_ts_t_templ(bool, const Napi::CallbackInfo &);
+// jsnapi_class_method_declaration
+Napi::Value _wrap_canfd_ts_t_data_get(const Napi::CallbackInfo &);
+// jsnapi_class_setter_declaration
+void _wrap_canfd_ts_t_data_set(const Napi::CallbackInfo &, const Napi::Value &);
+// jsnapi_class_method_declaration
+Napi::Value _wrap_canfd_ts_t_timestamp_us_get(const Napi::CallbackInfo &);
+// jsnapi_class_setter_declaration
+void _wrap_canfd_ts_t_timestamp_us_set(const Napi::CallbackInfo &, const Napi::Value &);
+// jsnapi_class_method_declaration
+Napi::Value _wrap_new_canfd_ts_t(const Napi::CallbackInfo &);
+virtual ~_exports_canfd_ts_t_templ();
+// jsnapi_class_epilogue_template
+static void JS_veto_set_static_variable(const Napi::CallbackInfo &, const Napi::Value &);
+void JS_veto_set_variable(const Napi::CallbackInfo &, const Napi::Value &);
+};
+
+template <typename SWIG_OBJ_WRAP>
+void _exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::JS_veto_set_static_variable(const Napi::CallbackInfo &info, const Napi::Value &value) {
+SWIG_NAPI_Raise(info.Env(), "Tried to write read-only variable.");
+}
+
+template <typename SWIG_OBJ_WRAP>
+void _exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::JS_veto_set_variable(const Napi::CallbackInfo &info, const Napi::Value &value) {
+SWIG_NAPI_Raise(info.Env(), "Tried to write read-only variable.");
+}
+// jsnapi_class_instance
+class _exports_canfd_ts_t_inst : public _exports_canfd_ts_t_templ<_exports_canfd_ts_t_inst> {
+public:
+  using _exports_canfd_ts_t_templ::_exports_canfd_ts_t_templ;
+  virtual ~_exports_canfd_ts_t_inst() {
+    
+  };
+  static void GetMembers(
+    Napi::Env,
+    std::map<std::string, _exports_canfd_ts_t_templ::PropertyDescriptor> &,
+    std::map<std::string, _exports_canfd_ts_t_templ::PropertyDescriptor> &
+    );
+  static Napi::Function GetClass(Napi::Env);
+};
+/* Class: canfd_ts_t (_exports_canfd_ts_t) */
+// jsnapi_getclass
+Napi::Function _exports_canfd_ts_t_inst::GetClass(Napi::Env env) {
+  std::map<std::string, _exports_canfd_ts_t_templ::PropertyDescriptor> members, staticMembers;
+  GetMembers(env, members, staticMembers);
+  
+  std::vector<_exports_canfd_ts_t_inst::PropertyDescriptor> symbolTable;
+  for (auto it = members.begin(); it != members.end(); it++)
+  symbolTable.push_back(it->second);
+  for (auto it = staticMembers.begin(); it != staticMembers.end(); it++)
+  symbolTable.push_back(it->second);
+  
+  return Napi::ObjectWrap<_exports_canfd_ts_t_inst>::DefineClass(env, "canfd_ts_t", symbolTable);
+}
+
+void _exports_canfd_ts_t_inst::GetMembers(
+  Napi::Env env,
+  std::map<std::string, _exports_canfd_ts_t_templ::PropertyDescriptor> &members,
+  std::map<std::string, _exports_canfd_ts_t_templ::PropertyDescriptor> &staticMembers
+  ) {
+  std::map<std::string, SWIG_NAPI_ObjectWrap_templ<SWIG_NAPI_ObjectWrap_inst>::PropertyDescriptor> baseMembers, baseStaticMembers;
+  SWIG_NAPI_ObjectWrap_inst::GetMembers(env, baseMembers, baseStaticMembers);
+  members.insert(baseMembers.begin(), baseMembers.end());
+  staticMembers.insert(staticMembers.begin(), staticMembers.end());
+  
+  /* register wrapper functions */
+  // jsnapi_register_member_variable
+  members.erase("data");
+  members.insert({
+    "data",
+      _exports_canfd_ts_t_templ::InstanceAccessor("data",
+        &_exports_canfd_ts_t_templ::_wrap_canfd_ts_t_data_get,
+        &_exports_canfd_ts_t_templ::_wrap_canfd_ts_t_data_set,
+        static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
+    });
   // jsnapi_register_member_variable
   members.erase("timestamp_us");
   members.insert({
     "timestamp_us",
-      _exports_canfd_t_templ::InstanceAccessor("timestamp_us",
-        &_exports_canfd_t_templ::_wrap_canfd_t_timestamp_us_get,
-        &_exports_canfd_t_templ::_wrap_canfd_t_timestamp_us_set,
+      _exports_canfd_ts_t_templ::InstanceAccessor("timestamp_us",
+        &_exports_canfd_ts_t_templ::_wrap_canfd_ts_t_timestamp_us_get,
+        &_exports_canfd_ts_t_templ::_wrap_canfd_ts_t_timestamp_us_set,
         static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
     });
   
@@ -3401,9 +3550,17 @@ Napi::Value _wrap_msg_t_classic_can_get(const Napi::CallbackInfo &);
 // jsnapi_class_setter_declaration
 void _wrap_msg_t_classic_can_set(const Napi::CallbackInfo &, const Napi::Value &);
 // jsnapi_class_method_declaration
+Napi::Value _wrap_msg_t_classic_can_ts_get(const Napi::CallbackInfo &);
+// jsnapi_class_setter_declaration
+void _wrap_msg_t_classic_can_ts_set(const Napi::CallbackInfo &, const Napi::Value &);
+// jsnapi_class_method_declaration
 Napi::Value _wrap_msg_t_canfd_get(const Napi::CallbackInfo &);
 // jsnapi_class_setter_declaration
 void _wrap_msg_t_canfd_set(const Napi::CallbackInfo &, const Napi::Value &);
+// jsnapi_class_method_declaration
+Napi::Value _wrap_msg_t_canfd_ts_get(const Napi::CallbackInfo &);
+// jsnapi_class_setter_declaration
+void _wrap_msg_t_canfd_ts_set(const Napi::CallbackInfo &, const Napi::Value &);
 // jsnapi_class_method_declaration
 Napi::Value _wrap_new_msg_t(const Napi::CallbackInfo &);
 virtual ~_exports_msg_t_templ();
@@ -3471,12 +3628,30 @@ void _exports_msg_t_inst::GetMembers(
         static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
     });
   // jsnapi_register_member_variable
+  members.erase("classic_can_ts");
+  members.insert({
+    "classic_can_ts",
+      _exports_msg_t_templ::InstanceAccessor("classic_can_ts",
+        &_exports_msg_t_templ::_wrap_msg_t_classic_can_ts_get,
+        &_exports_msg_t_templ::_wrap_msg_t_classic_can_ts_set,
+        static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
+    });
+  // jsnapi_register_member_variable
   members.erase("canfd");
   members.insert({
     "canfd",
       _exports_msg_t_templ::InstanceAccessor("canfd",
         &_exports_msg_t_templ::_wrap_msg_t_canfd_get,
         &_exports_msg_t_templ::_wrap_msg_t_canfd_set,
+        static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
+    });
+  // jsnapi_register_member_variable
+  members.erase("canfd_ts");
+  members.insert({
+    "canfd_ts",
+      _exports_msg_t_templ::InstanceAccessor("canfd_ts",
+        &_exports_msg_t_templ::_wrap_msg_t_canfd_ts_get,
+        &_exports_msg_t_templ::_wrap_msg_t_canfd_ts_set,
         static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable))
     });
   
@@ -8253,129 +8428,6 @@ fail:
 }
 
 
-// js_setter
-template <typename SWIG_OBJ_WRAP>
-void _exports_classic_can_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_t_timestamp_us_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
-  Napi::Env env = info.Env();
-  Napi::Value jsresult;
-  classic_can *arg1 = (classic_can *) 0 ;
-  uint32_t arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  unsigned int val2 ;
-  int ecode2 = 0 ;
-  
-  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_t_timestamp_us_set" "', argument " "1"" of type '" "classic_can *""'"); 
-  }
-  arg1 = reinterpret_cast< classic_can * >(argp1);ecode2 = SWIG_AsVal_unsigned_SS_int(value, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "classic_can_t_timestamp_us_set" "', argument " "2"" of type '" "uint32_t""'");
-  } 
-  arg2 = static_cast< uint32_t >(val2);if (arg1) (arg1)->timestamp_us = arg2;
-  
-  
-  
-  return;
-  
-  goto fail;
-fail:
-  return;
-}
-
-
-// js_getter
-template <typename SWIG_OBJ_WRAP>
-Napi::Value _exports_classic_can_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_t_timestamp_us_get(const Napi::CallbackInfo &info) {
-  Napi::Env env = info.Env();
-  Napi::Value jsresult;
-  classic_can *arg1 = (classic_can *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  uint32_t result;
-  
-  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_t_timestamp_us_get" "', argument " "1"" of type '" "classic_can *""'"); 
-  }
-  arg1 = reinterpret_cast< classic_can * >(argp1);result = (uint32_t) ((arg1)->timestamp_us);
-  jsresult = SWIG_From_unsigned_SS_int  SWIG_NAPI_FROM_CALL_ARGS(static_cast< unsigned int >(result));
-  
-  
-  return jsresult;
-  
-  goto fail;
-fail:
-  return Napi::Value();
-}
-
-
-// js_setter
-template <typename SWIG_OBJ_WRAP>
-void _exports_classic_can_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_t_dummy_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
-  Napi::Env env = info.Env();
-  Napi::Value jsresult;
-  classic_can *arg1 = (classic_can *) 0 ;
-  uint8_t *arg2 = (uint8_t *) (uint8_t *)0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  void *argp2 = 0 ;
-  int res2 = 0 ;
-  
-  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_t_dummy_set" "', argument " "1"" of type '" "classic_can *""'"); 
-  }
-  arg1 = reinterpret_cast< classic_can * >(argp1);res2 = SWIG_ConvertPtr(value, &argp2,SWIGTYPE_p_unsigned_char, 0 |  0 );
-  if (!SWIG_IsOK(res2)) {
-    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "classic_can_t_dummy_set" "', argument " "2"" of type '" "uint8_t [56]""'"); 
-  } 
-  arg2 = reinterpret_cast< uint8_t * >(argp2);{
-    if (arg2) {
-      size_t ii = 0;
-      for (; ii < (size_t)56; ++ii) *(uint8_t *)&arg1->dummy[ii] = *((uint8_t *)arg2 + ii);
-    } else {
-      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in variable '""dummy""' of type '""uint8_t [56]""'");
-    }
-  }
-  
-  
-  
-  return;
-  
-  goto fail;
-fail:
-  return;
-}
-
-
-// js_getter
-template <typename SWIG_OBJ_WRAP>
-Napi::Value _exports_classic_can_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_t_dummy_get(const Napi::CallbackInfo &info) {
-  Napi::Env env = info.Env();
-  Napi::Value jsresult;
-  classic_can *arg1 = (classic_can *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  uint8_t *result = 0 ;
-  
-  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_t_dummy_get" "', argument " "1"" of type '" "classic_can *""'"); 
-  }
-  arg1 = reinterpret_cast< classic_can * >(argp1);result = (uint8_t *)(uint8_t *) ((arg1)->dummy);
-  jsresult = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_unsigned_char, 0 |  0 );
-  
-  
-  return jsresult;
-  
-  goto fail;
-fail:
-  return Napi::Value();
-}
-
-
 template <typename SWIG_OBJ_WRAP>
 // js_ctor
 // This is the main constructor
@@ -8419,6 +8471,179 @@ _exports_classic_can_t_templ<SWIG_OBJ_WRAP>::_exports_classic_can_t_templ(bool, 
 template <typename SWIG_OBJ_WRAP>
 _exports_classic_can_t_templ<SWIG_OBJ_WRAP>::~_exports_classic_can_t_templ() {
   auto arg1 = reinterpret_cast<classic_can *>(this->self);
+  if (this->owned && arg1) {
+    delete arg1;
+    this->self = nullptr;
+  }
+}
+
+
+// js_setter
+template <typename SWIG_OBJ_WRAP>
+void _exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_ts_t_data_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  classic_can_ts *arg1 = (classic_can_ts *) 0 ;
+  uint8_t *arg2 = (uint8_t *) (uint8_t *)0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  void *argp2 = 0 ;
+  int res2 = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_ts_t_data_set" "', argument " "1"" of type '" "classic_can_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< classic_can_ts * >(argp1);res2 = SWIG_ConvertPtr(value, &argp2,SWIGTYPE_p_unsigned_char, 0 |  0 );
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "classic_can_ts_t_data_set" "', argument " "2"" of type '" "uint8_t [8]""'"); 
+  } 
+  arg2 = reinterpret_cast< uint8_t * >(argp2);{
+    if (arg2) {
+      size_t ii = 0;
+      for (; ii < (size_t)8; ++ii) *(uint8_t *)&arg1->data[ii] = *((uint8_t *)arg2 + ii);
+    } else {
+      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in variable '""data""' of type '""uint8_t [8]""'");
+    }
+  }
+  
+  
+  
+  return;
+  
+  goto fail;
+fail:
+  return;
+}
+
+
+// js_getter
+template <typename SWIG_OBJ_WRAP>
+Napi::Value _exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_ts_t_data_get(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  classic_can_ts *arg1 = (classic_can_ts *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  uint8_t *result = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_ts_t_data_get" "', argument " "1"" of type '" "classic_can_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< classic_can_ts * >(argp1);result = (uint8_t *)(uint8_t *) ((arg1)->data);
+  jsresult = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_unsigned_char, 0 |  0 );
+  
+  
+  return jsresult;
+  
+  goto fail;
+fail:
+  return Napi::Value();
+}
+
+
+// js_setter
+template <typename SWIG_OBJ_WRAP>
+void _exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_ts_t_timestamp_us_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  classic_can_ts *arg1 = (classic_can_ts *) 0 ;
+  uint32_t arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  unsigned int val2 ;
+  int ecode2 = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_ts_t_timestamp_us_set" "', argument " "1"" of type '" "classic_can_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< classic_can_ts * >(argp1);ecode2 = SWIG_AsVal_unsigned_SS_int(value, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "classic_can_ts_t_timestamp_us_set" "', argument " "2"" of type '" "uint32_t""'");
+  } 
+  arg2 = static_cast< uint32_t >(val2);if (arg1) (arg1)->timestamp_us = arg2;
+  
+  
+  
+  return;
+  
+  goto fail;
+fail:
+  return;
+}
+
+
+// js_getter
+template <typename SWIG_OBJ_WRAP>
+Napi::Value _exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_classic_can_ts_t_timestamp_us_get(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  classic_can_ts *arg1 = (classic_can_ts *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  uint32_t result;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_classic_can_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "classic_can_ts_t_timestamp_us_get" "', argument " "1"" of type '" "classic_can_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< classic_can_ts * >(argp1);result = (uint32_t) ((arg1)->timestamp_us);
+  jsresult = SWIG_From_unsigned_SS_int  SWIG_NAPI_FROM_CALL_ARGS(static_cast< unsigned int >(result));
+  
+  
+  return jsresult;
+  
+  goto fail;
+fail:
+  return Napi::Value();
+}
+
+
+template <typename SWIG_OBJ_WRAP>
+// js_ctor
+// This is the main constructor
+_exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::_exports_classic_can_ts_t_templ(const Napi::CallbackInfo &info)
+:SWIG_NAPI_ObjectWrap_templ<SWIG_OBJ_WRAP>(true, info) {
+  Napi::Env env = info.Env();
+  
+  this->info = SWIGTYPE_p_classic_can_ts;
+  if (info.Length() == 1 && info[0].IsExternal()) {
+    // This constructor has been called internally from C++/SWIG
+    // to wrap an already existing C++ object in JS
+    this->self = info[0].As<Napi::External<void>>().Data();
+    this->owned = false;
+    return;
+  }
+  this->owned = true;
+  
+  classic_can_ts *result;
+  if(static_cast<int>(info.Length()) < 0 || static_cast<int>(info.Length()) > 0) {
+    SWIG_Error(SWIG_ERROR, "Illegal number of arguments for _wrap_new_classic_can_ts_t.");
+  }
+  result = (classic_can_ts *)new classic_can_ts();
+  
+  
+  this->self = result;
+  return;
+  goto fail;
+fail:
+  return;
+}
+
+// This is the bypass constructor to be used from child classes
+template <typename SWIG_OBJ_WRAP>
+_exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::_exports_classic_can_ts_t_templ(bool, const Napi::CallbackInfo &info)
+:SWIG_NAPI_ObjectWrap_templ<SWIG_OBJ_WRAP>(true, info) {
+  
+}
+
+
+// js_dtoroverride
+template <typename SWIG_OBJ_WRAP>
+_exports_classic_can_ts_t_templ<SWIG_OBJ_WRAP>::~_exports_classic_can_ts_t_templ() {
+  auto arg1 = reinterpret_cast<classic_can_ts *>(this->self);
   if (this->owned && arg1) {
     delete arg1;
     this->self = nullptr;
@@ -8491,64 +8716,6 @@ fail:
 }
 
 
-// js_setter
-template <typename SWIG_OBJ_WRAP>
-void _exports_canfd_t_templ<SWIG_OBJ_WRAP>::_wrap_canfd_t_timestamp_us_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
-  Napi::Env env = info.Env();
-  Napi::Value jsresult;
-  canfd *arg1 = (canfd *) 0 ;
-  uint32_t arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  unsigned int val2 ;
-  int ecode2 = 0 ;
-  
-  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_canfd, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "canfd_t_timestamp_us_set" "', argument " "1"" of type '" "canfd *""'"); 
-  }
-  arg1 = reinterpret_cast< canfd * >(argp1);ecode2 = SWIG_AsVal_unsigned_SS_int(value, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "canfd_t_timestamp_us_set" "', argument " "2"" of type '" "uint32_t""'");
-  } 
-  arg2 = static_cast< uint32_t >(val2);if (arg1) (arg1)->timestamp_us = arg2;
-  
-  
-  
-  return;
-  
-  goto fail;
-fail:
-  return;
-}
-
-
-// js_getter
-template <typename SWIG_OBJ_WRAP>
-Napi::Value _exports_canfd_t_templ<SWIG_OBJ_WRAP>::_wrap_canfd_t_timestamp_us_get(const Napi::CallbackInfo &info) {
-  Napi::Env env = info.Env();
-  Napi::Value jsresult;
-  canfd *arg1 = (canfd *) 0 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  uint32_t result;
-  
-  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_canfd, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "canfd_t_timestamp_us_get" "', argument " "1"" of type '" "canfd *""'"); 
-  }
-  arg1 = reinterpret_cast< canfd * >(argp1);result = (uint32_t) ((arg1)->timestamp_us);
-  jsresult = SWIG_From_unsigned_SS_int  SWIG_NAPI_FROM_CALL_ARGS(static_cast< unsigned int >(result));
-  
-  
-  return jsresult;
-  
-  goto fail;
-fail:
-  return Napi::Value();
-}
-
-
 template <typename SWIG_OBJ_WRAP>
 // js_ctor
 // This is the main constructor
@@ -8592,6 +8759,179 @@ _exports_canfd_t_templ<SWIG_OBJ_WRAP>::_exports_canfd_t_templ(bool, const Napi::
 template <typename SWIG_OBJ_WRAP>
 _exports_canfd_t_templ<SWIG_OBJ_WRAP>::~_exports_canfd_t_templ() {
   auto arg1 = reinterpret_cast<canfd *>(this->self);
+  if (this->owned && arg1) {
+    delete arg1;
+    this->self = nullptr;
+  }
+}
+
+
+// js_setter
+template <typename SWIG_OBJ_WRAP>
+void _exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_canfd_ts_t_data_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  canfd_ts *arg1 = (canfd_ts *) 0 ;
+  uint8_t *arg2 = (uint8_t *) (uint8_t *)0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  void *argp2 = 0 ;
+  int res2 = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_canfd_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "canfd_ts_t_data_set" "', argument " "1"" of type '" "canfd_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< canfd_ts * >(argp1);res2 = SWIG_ConvertPtr(value, &argp2,SWIGTYPE_p_unsigned_char, 0 |  0 );
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "canfd_ts_t_data_set" "', argument " "2"" of type '" "uint8_t [64]""'"); 
+  } 
+  arg2 = reinterpret_cast< uint8_t * >(argp2);{
+    if (arg2) {
+      size_t ii = 0;
+      for (; ii < (size_t)64; ++ii) *(uint8_t *)&arg1->data[ii] = *((uint8_t *)arg2 + ii);
+    } else {
+      SWIG_exception_fail(SWIG_ValueError, "invalid null reference " "in variable '""data""' of type '""uint8_t [64]""'");
+    }
+  }
+  
+  
+  
+  return;
+  
+  goto fail;
+fail:
+  return;
+}
+
+
+// js_getter
+template <typename SWIG_OBJ_WRAP>
+Napi::Value _exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_canfd_ts_t_data_get(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  canfd_ts *arg1 = (canfd_ts *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  uint8_t *result = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_canfd_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "canfd_ts_t_data_get" "', argument " "1"" of type '" "canfd_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< canfd_ts * >(argp1);result = (uint8_t *)(uint8_t *) ((arg1)->data);
+  jsresult = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_unsigned_char, 0 |  0 );
+  
+  
+  return jsresult;
+  
+  goto fail;
+fail:
+  return Napi::Value();
+}
+
+
+// js_setter
+template <typename SWIG_OBJ_WRAP>
+void _exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_canfd_ts_t_timestamp_us_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  canfd_ts *arg1 = (canfd_ts *) 0 ;
+  uint32_t arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  unsigned int val2 ;
+  int ecode2 = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_canfd_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "canfd_ts_t_timestamp_us_set" "', argument " "1"" of type '" "canfd_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< canfd_ts * >(argp1);ecode2 = SWIG_AsVal_unsigned_SS_int(value, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "canfd_ts_t_timestamp_us_set" "', argument " "2"" of type '" "uint32_t""'");
+  } 
+  arg2 = static_cast< uint32_t >(val2);if (arg1) (arg1)->timestamp_us = arg2;
+  
+  
+  
+  return;
+  
+  goto fail;
+fail:
+  return;
+}
+
+
+// js_getter
+template <typename SWIG_OBJ_WRAP>
+Napi::Value _exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::_wrap_canfd_ts_t_timestamp_us_get(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  canfd_ts *arg1 = (canfd_ts *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  uint32_t result;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_canfd_ts, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "canfd_ts_t_timestamp_us_get" "', argument " "1"" of type '" "canfd_ts *""'"); 
+  }
+  arg1 = reinterpret_cast< canfd_ts * >(argp1);result = (uint32_t) ((arg1)->timestamp_us);
+  jsresult = SWIG_From_unsigned_SS_int  SWIG_NAPI_FROM_CALL_ARGS(static_cast< unsigned int >(result));
+  
+  
+  return jsresult;
+  
+  goto fail;
+fail:
+  return Napi::Value();
+}
+
+
+template <typename SWIG_OBJ_WRAP>
+// js_ctor
+// This is the main constructor
+_exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::_exports_canfd_ts_t_templ(const Napi::CallbackInfo &info)
+:SWIG_NAPI_ObjectWrap_templ<SWIG_OBJ_WRAP>(true, info) {
+  Napi::Env env = info.Env();
+  
+  this->info = SWIGTYPE_p_canfd_ts;
+  if (info.Length() == 1 && info[0].IsExternal()) {
+    // This constructor has been called internally from C++/SWIG
+    // to wrap an already existing C++ object in JS
+    this->self = info[0].As<Napi::External<void>>().Data();
+    this->owned = false;
+    return;
+  }
+  this->owned = true;
+  
+  canfd_ts *result;
+  if(static_cast<int>(info.Length()) < 0 || static_cast<int>(info.Length()) > 0) {
+    SWIG_Error(SWIG_ERROR, "Illegal number of arguments for _wrap_new_canfd_ts_t.");
+  }
+  result = (canfd_ts *)new canfd_ts();
+  
+  
+  this->self = result;
+  return;
+  goto fail;
+fail:
+  return;
+}
+
+// This is the bypass constructor to be used from child classes
+template <typename SWIG_OBJ_WRAP>
+_exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::_exports_canfd_ts_t_templ(bool, const Napi::CallbackInfo &info)
+:SWIG_NAPI_ObjectWrap_templ<SWIG_OBJ_WRAP>(true, info) {
+  
+}
+
+
+// js_dtoroverride
+template <typename SWIG_OBJ_WRAP>
+_exports_canfd_ts_t_templ<SWIG_OBJ_WRAP>::~_exports_canfd_ts_t_templ() {
+  auto arg1 = reinterpret_cast<canfd_ts *>(this->self);
   if (this->owned && arg1) {
     delete arg1;
     this->self = nullptr;
@@ -8659,6 +8999,64 @@ fail:
 
 // js_setter
 template <typename SWIG_OBJ_WRAP>
+void _exports_msg_t_templ<SWIG_OBJ_WRAP>::_wrap_msg_t_classic_can_ts_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  msg_t *arg1 = (msg_t *) 0 ;
+  classic_can_ts_t *arg2 = (classic_can_ts_t *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  void *argp2 = 0 ;
+  int res2 = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_msg_t, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "msg_t_classic_can_ts_set" "', argument " "1"" of type '" "msg_t *""'"); 
+  }
+  arg1 = reinterpret_cast< msg_t * >(argp1);res2 = SWIG_ConvertPtr(value, &argp2,SWIGTYPE_p_classic_can_ts, 0 |  0 );
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "msg_t_classic_can_ts_set" "', argument " "2"" of type '" "classic_can_ts_t *""'"); 
+  }
+  arg2 = reinterpret_cast< classic_can_ts_t * >(argp2);if (arg1) (arg1)->classic_can_ts = *arg2;
+  
+  
+  
+  return;
+  
+  goto fail;
+fail:
+  return;
+}
+
+
+// js_getter
+template <typename SWIG_OBJ_WRAP>
+Napi::Value _exports_msg_t_templ<SWIG_OBJ_WRAP>::_wrap_msg_t_classic_can_ts_get(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  msg_t *arg1 = (msg_t *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  classic_can_ts_t *result = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_msg_t, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "msg_t_classic_can_ts_get" "', argument " "1"" of type '" "msg_t *""'"); 
+  }
+  arg1 = reinterpret_cast< msg_t * >(argp1);result = (classic_can_ts_t *)& ((arg1)->classic_can_ts);
+  jsresult = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_classic_can_ts, 0 |  0 );
+  
+  
+  return jsresult;
+  
+  goto fail;
+fail:
+  return Napi::Value();
+}
+
+
+// js_setter
+template <typename SWIG_OBJ_WRAP>
 void _exports_msg_t_templ<SWIG_OBJ_WRAP>::_wrap_msg_t_canfd_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
   Napi::Env env = info.Env();
   Napi::Value jsresult;
@@ -8705,6 +9103,64 @@ Napi::Value _exports_msg_t_templ<SWIG_OBJ_WRAP>::_wrap_msg_t_canfd_get(const Nap
   }
   arg1 = reinterpret_cast< msg_t * >(argp1);result = (canfd_t *)& ((arg1)->canfd);
   jsresult = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_canfd, 0 |  0 );
+  
+  
+  return jsresult;
+  
+  goto fail;
+fail:
+  return Napi::Value();
+}
+
+
+// js_setter
+template <typename SWIG_OBJ_WRAP>
+void _exports_msg_t_templ<SWIG_OBJ_WRAP>::_wrap_msg_t_canfd_ts_set(const Napi::CallbackInfo &info, const Napi::Value &value) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  msg_t *arg1 = (msg_t *) 0 ;
+  canfd_ts_t *arg2 = (canfd_ts_t *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  void *argp2 = 0 ;
+  int res2 = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_msg_t, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "msg_t_canfd_ts_set" "', argument " "1"" of type '" "msg_t *""'"); 
+  }
+  arg1 = reinterpret_cast< msg_t * >(argp1);res2 = SWIG_ConvertPtr(value, &argp2,SWIGTYPE_p_canfd_ts, 0 |  0 );
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "msg_t_canfd_ts_set" "', argument " "2"" of type '" "canfd_ts_t *""'"); 
+  }
+  arg2 = reinterpret_cast< canfd_ts_t * >(argp2);if (arg1) (arg1)->canfd_ts = *arg2;
+  
+  
+  
+  return;
+  
+  goto fail;
+fail:
+  return;
+}
+
+
+// js_getter
+template <typename SWIG_OBJ_WRAP>
+Napi::Value _exports_msg_t_templ<SWIG_OBJ_WRAP>::_wrap_msg_t_canfd_ts_get(const Napi::CallbackInfo &info) {
+  Napi::Env env = info.Env();
+  Napi::Value jsresult;
+  msg_t *arg1 = (msg_t *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  canfd_ts_t *result = 0 ;
+  
+  res1 = SWIG_ConvertPtr(info.This(), &argp1,SWIGTYPE_p_msg_t, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "msg_t_canfd_ts_get" "', argument " "1"" of type '" "msg_t *""'"); 
+  }
+  arg1 = reinterpret_cast< msg_t * >(argp1);result = (canfd_ts_t *)& ((arg1)->canfd_ts);
+  jsresult = SWIG_NewPointerObj(SWIG_as_voidptr(result), SWIGTYPE_p_canfd_ts, 0 |  0 );
   
   
   return jsresult;
@@ -12535,9 +12991,11 @@ static swig_type_info _swigt__p_candle_host_config_t = {"_p_candle_host_config_t
 static swig_type_info _swigt__p_candle_list_t = {"_p_candle_list_t", "p_candle_list_t|candle_list_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_candle_mode_t = {"_p_candle_mode_t", "candle_mode_t *|enum candle_mode_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_canfd = {"_p_canfd", "canfd *|canfd_t *|p_canfd", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_canfd_ts = {"_p_canfd_ts", "canfd_ts_t *|p_canfd_ts|canfd_ts *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_canlde_rx_urb = {"_p_canlde_rx_urb", "canlde_rx_urb *|p_canlde_rx_urb", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_char = {"_p_char", "CCHAR *|CHAR *|TCHAR *|char *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_classic_can = {"_p_classic_can", "classic_can *|classic_can_t *|p_classic_can", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_classic_can_ts = {"_p_classic_can_ts", "classic_can_ts_t *|p_classic_can_ts|classic_can_ts *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_float = {"_p_float", "FLOAT *|float *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_int = {"_p_int", "BOOL *|INT *|INT32 *|INT_PTR *|LONG32 *|int32_t *|int_fast16_t *|int_fast32_t *|int_least32_t *|intptr_t *|int *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_long = {"_p_long", "HRESULT *|LONG *|LONG_PTR *|SHANDLE_PTR *|SSIZE_T *|long *", 0, 0, (void*)0, 0};
@@ -12581,9 +13039,11 @@ static swig_type_info *swig_type_initial[] = {
   &_swigt__p_candle_list_t,
   &_swigt__p_candle_mode_t,
   &_swigt__p_canfd,
+  &_swigt__p_canfd_ts,
   &_swigt__p_canlde_rx_urb,
   &_swigt__p_char,
   &_swigt__p_classic_can,
+  &_swigt__p_classic_can_ts,
   &_swigt__p_float,
   &_swigt__p_int,
   &_swigt__p_long,
@@ -12627,9 +13087,11 @@ static swig_cast_info _swigc__p_candle_host_config_t[] = {  {&_swigt__p_candle_h
 static swig_cast_info _swigc__p_candle_list_t[] = {  {&_swigt__p_candle_list_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_candle_mode_t[] = {  {&_swigt__p_candle_mode_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_canfd[] = {  {&_swigt__p_canfd, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_canfd_ts[] = {  {&_swigt__p_canfd_ts, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_canlde_rx_urb[] = {  {&_swigt__p_canlde_rx_urb, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_char[] = {  {&_swigt__p_char, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_classic_can[] = {  {&_swigt__p_classic_can, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_classic_can_ts[] = {  {&_swigt__p_classic_can_ts, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_float[] = {  {&_swigt__p_float, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_int[] = {  {&_swigt__p_int, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_long[] = {  {&_swigt__p_long, 0, 0, 0},{0, 0, 0, 0}};
@@ -12673,9 +13135,11 @@ static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_candle_list_t,
   _swigc__p_candle_mode_t,
   _swigc__p_canfd,
+  _swigc__p_canfd_ts,
   _swigc__p_canlde_rx_urb,
   _swigc__p_char,
   _swigc__p_classic_can,
+  _swigc__p_classic_can_ts,
   _swigc__p_float,
   _swigc__p_int,
   _swigc__p_long,
@@ -13129,66 +13593,86 @@ if (SWIGTYPE_p_classic_can->clientdata == nullptr) {
 Napi::FunctionReference *_exports_classic_can_t_ctor_ref = new Napi::FunctionReference();
 *_exports_classic_can_t_ctor_ref = Napi::Persistent(_exports_classic_can_t_ctor);
 env.GetInstanceData<EnvInstanceData>()->ctor[11] = _exports_classic_can_t_ctor_ref;
+/* Class: classic_can_ts_t (_exports_classic_can_ts_t) */
+// jsnapi_registerclass
+Napi::Function _exports_classic_can_ts_t_ctor = _exports_classic_can_ts_t_inst::GetClass(env);
+exports.Set("classic_can_ts_t", _exports_classic_can_ts_t_ctor);
+if (SWIGTYPE_p_classic_can_ts->clientdata == nullptr) {
+  SWIGTYPE_p_classic_can_ts->clientdata = new size_t(12);
+}
+Napi::FunctionReference *_exports_classic_can_ts_t_ctor_ref = new Napi::FunctionReference();
+*_exports_classic_can_ts_t_ctor_ref = Napi::Persistent(_exports_classic_can_ts_t_ctor);
+env.GetInstanceData<EnvInstanceData>()->ctor[12] = _exports_classic_can_ts_t_ctor_ref;
 /* Class: canfd_t (_exports_canfd_t) */
 // jsnapi_registerclass
 Napi::Function _exports_canfd_t_ctor = _exports_canfd_t_inst::GetClass(env);
 exports.Set("canfd_t", _exports_canfd_t_ctor);
 if (SWIGTYPE_p_canfd->clientdata == nullptr) {
-  SWIGTYPE_p_canfd->clientdata = new size_t(12);
+  SWIGTYPE_p_canfd->clientdata = new size_t(13);
 }
 Napi::FunctionReference *_exports_canfd_t_ctor_ref = new Napi::FunctionReference();
 *_exports_canfd_t_ctor_ref = Napi::Persistent(_exports_canfd_t_ctor);
-env.GetInstanceData<EnvInstanceData>()->ctor[12] = _exports_canfd_t_ctor_ref;
+env.GetInstanceData<EnvInstanceData>()->ctor[13] = _exports_canfd_t_ctor_ref;
+/* Class: canfd_ts_t (_exports_canfd_ts_t) */
+// jsnapi_registerclass
+Napi::Function _exports_canfd_ts_t_ctor = _exports_canfd_ts_t_inst::GetClass(env);
+exports.Set("canfd_ts_t", _exports_canfd_ts_t_ctor);
+if (SWIGTYPE_p_canfd_ts->clientdata == nullptr) {
+  SWIGTYPE_p_canfd_ts->clientdata = new size_t(14);
+}
+Napi::FunctionReference *_exports_canfd_ts_t_ctor_ref = new Napi::FunctionReference();
+*_exports_canfd_ts_t_ctor_ref = Napi::Persistent(_exports_canfd_ts_t_ctor);
+env.GetInstanceData<EnvInstanceData>()->ctor[14] = _exports_canfd_ts_t_ctor_ref;
 /* Class: msg_t (_exports_msg_t) */
 // jsnapi_registerclass
 Napi::Function _exports_msg_t_ctor = _exports_msg_t_inst::GetClass(env);
 exports.Set("msg_t", _exports_msg_t_ctor);
 if (SWIGTYPE_p_msg_t->clientdata == nullptr) {
-  SWIGTYPE_p_msg_t->clientdata = new size_t(13);
+  SWIGTYPE_p_msg_t->clientdata = new size_t(15);
 }
 Napi::FunctionReference *_exports_msg_t_ctor_ref = new Napi::FunctionReference();
 *_exports_msg_t_ctor_ref = Napi::Persistent(_exports_msg_t_ctor);
-env.GetInstanceData<EnvInstanceData>()->ctor[13] = _exports_msg_t_ctor_ref;
+env.GetInstanceData<EnvInstanceData>()->ctor[15] = _exports_msg_t_ctor_ref;
 /* Class: candle_frame_t (_exports_candle_frame_t) */
 // jsnapi_registerclass
 Napi::Function _exports_candle_frame_t_ctor = _exports_candle_frame_t_inst::GetClass(env);
 exports.Set("candle_frame_t", _exports_candle_frame_t_ctor);
 if (SWIGTYPE_p_candle_frame_t->clientdata == nullptr) {
-  SWIGTYPE_p_candle_frame_t->clientdata = new size_t(14);
+  SWIGTYPE_p_candle_frame_t->clientdata = new size_t(16);
 }
 Napi::FunctionReference *_exports_candle_frame_t_ctor_ref = new Napi::FunctionReference();
 *_exports_candle_frame_t_ctor_ref = Napi::Persistent(_exports_candle_frame_t_ctor);
-env.GetInstanceData<EnvInstanceData>()->ctor[14] = _exports_candle_frame_t_ctor_ref;
+env.GetInstanceData<EnvInstanceData>()->ctor[16] = _exports_candle_frame_t_ctor_ref;
 /* Class: candle_capability_t (_exports_candle_capability_t) */
 // jsnapi_registerclass
 Napi::Function _exports_candle_capability_t_ctor = _exports_candle_capability_t_inst::GetClass(env);
 exports.Set("candle_capability_t", _exports_candle_capability_t_ctor);
 if (SWIGTYPE_p_candle_capability_t->clientdata == nullptr) {
-  SWIGTYPE_p_candle_capability_t->clientdata = new size_t(15);
+  SWIGTYPE_p_candle_capability_t->clientdata = new size_t(17);
 }
 Napi::FunctionReference *_exports_candle_capability_t_ctor_ref = new Napi::FunctionReference();
 *_exports_candle_capability_t_ctor_ref = Napi::Persistent(_exports_candle_capability_t_ctor);
-env.GetInstanceData<EnvInstanceData>()->ctor[15] = _exports_candle_capability_t_ctor_ref;
+env.GetInstanceData<EnvInstanceData>()->ctor[17] = _exports_candle_capability_t_ctor_ref;
 /* Class: candle_capability_extended_t (_exports_candle_capability_extended_t) */
 // jsnapi_registerclass
 Napi::Function _exports_candle_capability_extended_t_ctor = _exports_candle_capability_extended_t_inst::GetClass(env);
 exports.Set("candle_capability_extended_t", _exports_candle_capability_extended_t_ctor);
 if (SWIGTYPE_p_candle_capability_extended_t->clientdata == nullptr) {
-  SWIGTYPE_p_candle_capability_extended_t->clientdata = new size_t(16);
+  SWIGTYPE_p_candle_capability_extended_t->clientdata = new size_t(18);
 }
 Napi::FunctionReference *_exports_candle_capability_extended_t_ctor_ref = new Napi::FunctionReference();
 *_exports_candle_capability_extended_t_ctor_ref = Napi::Persistent(_exports_candle_capability_extended_t_ctor);
-env.GetInstanceData<EnvInstanceData>()->ctor[16] = _exports_candle_capability_extended_t_ctor_ref;
+env.GetInstanceData<EnvInstanceData>()->ctor[18] = _exports_candle_capability_extended_t_ctor_ref;
 /* Class: candle_bittiming_t (_exports_candle_bittiming_t) */
 // jsnapi_registerclass
 Napi::Function _exports_candle_bittiming_t_ctor = _exports_candle_bittiming_t_inst::GetClass(env);
 exports.Set("candle_bittiming_t", _exports_candle_bittiming_t_ctor);
 if (SWIGTYPE_p_candle_bittiming_t->clientdata == nullptr) {
-  SWIGTYPE_p_candle_bittiming_t->clientdata = new size_t(17);
+  SWIGTYPE_p_candle_bittiming_t->clientdata = new size_t(19);
 }
 Napi::FunctionReference *_exports_candle_bittiming_t_ctor_ref = new Napi::FunctionReference();
 *_exports_candle_bittiming_t_ctor_ref = Napi::Persistent(_exports_candle_bittiming_t_ctor);
-env.GetInstanceData<EnvInstanceData>()->ctor[17] = _exports_candle_bittiming_t_ctor_ref;
+env.GetInstanceData<EnvInstanceData>()->ctor[19] = _exports_candle_bittiming_t_ctor_ref;
 
 
   /* enable inheritance */
@@ -13385,6 +13869,21 @@ do {
 } while (0);
 
 
+// Inheritance for _exports_classic_can_ts_t (classic_can_ts_t) <- SWIG_NAPI_ObjectWrap
+// jsnapi_setup_inheritance
+do {
+  Napi::Value protoBase, protoSub;
+  NAPI_CHECK_RESULT(_exports_classic_can_ts_t_ctor.Get("prototype"), protoSub);
+  NAPI_CHECK_RESULT(SWIG_NAPI_ObjectWrap_ctor.Get("prototype"), protoBase);
+  NAPI_CHECK_MAYBE(setProto.Call({
+    _exports_classic_can_ts_t_ctor, SWIG_NAPI_ObjectWrap_ctor
+  }));
+  NAPI_CHECK_MAYBE(setProto.Call({
+    protoSub, protoBase
+  }));
+} while (0);
+
+
 // Inheritance for _exports_canfd_t (canfd_t) <- SWIG_NAPI_ObjectWrap
 // jsnapi_setup_inheritance
 do {
@@ -13393,6 +13892,21 @@ do {
   NAPI_CHECK_RESULT(SWIG_NAPI_ObjectWrap_ctor.Get("prototype"), protoBase);
   NAPI_CHECK_MAYBE(setProto.Call({
     _exports_canfd_t_ctor, SWIG_NAPI_ObjectWrap_ctor
+  }));
+  NAPI_CHECK_MAYBE(setProto.Call({
+    protoSub, protoBase
+  }));
+} while (0);
+
+
+// Inheritance for _exports_canfd_ts_t (canfd_ts_t) <- SWIG_NAPI_ObjectWrap
+// jsnapi_setup_inheritance
+do {
+  Napi::Value protoBase, protoSub;
+  NAPI_CHECK_RESULT(_exports_canfd_ts_t_ctor.Get("prototype"), protoSub);
+  NAPI_CHECK_RESULT(SWIG_NAPI_ObjectWrap_ctor.Get("prototype"), protoBase);
+  NAPI_CHECK_MAYBE(setProto.Call({
+    _exports_canfd_ts_t_ctor, SWIG_NAPI_ObjectWrap_ctor
   }));
   NAPI_CHECK_MAYBE(setProto.Call({
     protoSub, protoBase
@@ -14137,4 +14651,3 @@ fail:
 }
 
 NODE_API_MODULE(xmlpp, Init)
-

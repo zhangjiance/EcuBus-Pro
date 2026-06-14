@@ -119,18 +119,27 @@ typedef enum {
 
 typedef struct classic_can {
     uint8_t data[8];
-    uint64_t timestamp_us;
-    uint8_t dummy[56];
 } classic_can_t;
+
+typedef struct classic_can_ts {
+    uint8_t data[8];
+    uint32_t timestamp_us;
+} classic_can_ts_t;
 
 typedef struct canfd {
     uint8_t data[64];
-    uint64_t timestamp_us;
 }canfd_t;
+
+typedef struct canfd_ts {
+    uint8_t data[64];
+    uint32_t timestamp_us;
+}canfd_ts_t;
 
 typedef union {
     classic_can_t classic_can;
+    classic_can_ts_t classic_can_ts;
     canfd_t canfd;
+    canfd_ts_t canfd_ts;
 }msg_t; 
 
 typedef struct {

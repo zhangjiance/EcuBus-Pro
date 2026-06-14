@@ -534,11 +534,21 @@ bool __stdcall DLL candle_frame_send(candle_handle hdev, uint8_t ch, candle_fram
     frame->echo_id = 0;
     frame->channel = ch;
 
-    uint32_t size;
-    if (frame->flags & CANDLE_FLAG_FD) {
-        size = 12 + 64;
-    } else {
-        size = 12 + 8;
+    uint32_t size = 12; // header size
+
+    if(dev->bt_const.feature & CANDLE_MODE_FD) 
+    {
+      if (dev->bt_const.feature & CANDLE_MODE_HW_TIMESTAMP)
+        size += sizeof(struct canfd_ts);
+      else
+        size += sizeof(struct canfd);
+    }
+    else
+    {
+      if (dev->bt_const.feature & CANDLE_MODE_HW_TIMESTAMP)
+        size += sizeof(struct classic_can_ts);
+      else
+        size += sizeof(struct classic_can);
     }
 
     bool rc = WinUsb_WritePipe(
@@ -588,7 +598,7 @@ bool __stdcall DLL candle_frame_read(candle_handle hdev, candle_frame_t *frame, 
     }
 
     if (bytes_transfered < (12 + 8 + 4)) {
-        frame->msg.classic_can.timestamp_us = 0;
+        frame->msg.classic_can_ts.timestamp_us = 0;
     }
 
     memcpy(frame, dev->rxurbs[urb_num].buf, sizeof(*frame));
@@ -624,7 +634,7 @@ bool __stdcall DLL candle_frame_read(candle_handle hdev, candle_frame_t *frame, 
         size = frame->can_dlc;
     }
     if (bytes_transfered < (12 + size + 4)) {
-        frame->msg.canfd.timestamp_us = 0;
+        frame->msg.canfd_ts.timestamp_us = 0;
     }
     return candle_prepare_read(dev, urb_num);
 }
@@ -674,9 +684,9 @@ uint8_t* __stdcall DLL candle_frame_data(candle_frame_t *frame)
 uint32_t __stdcall DLL candle_frame_timestamp_us(candle_frame_t *frame)
 {
     if (frame->flags & CANDLE_FLAG_FD) {
-        return frame->msg.canfd.timestamp_us;
+        return frame->msg.canfd_ts.timestamp_us;
     } else {
-        return frame->msg.classic_can.timestamp_us;
+        return frame->msg.classic_can_ts.timestamp_us;
     }
 }
 
