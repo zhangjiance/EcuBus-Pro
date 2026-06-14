@@ -220,7 +220,7 @@ function nodeClick(data: tree, node: any) {
         activeTree.value = data
       })
     }
-    if (dataModify.value) {
+    if (dataModify.value && activeTree.value) {
       showSaveDialog(done)
     } else {
       done()
@@ -260,7 +260,7 @@ function addNewDevice(node: tree) {
     })
   }
 
-  if (dataModify.value) {
+  if (dataModify.value && activeTree.value) {
     showSaveDialog(done)
   } else {
     done()
