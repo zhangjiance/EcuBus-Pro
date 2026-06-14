@@ -39,7 +39,11 @@ export class Candle_CAN extends CanBase {
   canfdConfig: any
   startTime = getTsUs()
   tsOffset: number | undefined
-  static candleOpened = false
+
+  // Device management: track opened devices by path
+  private static openedDevices = new Map<string, { device: any; refCount: number }>()
+  private devicePath: string = ''
+
   private readAbort = new AbortController()
 
   rejectBaseMap = new Map<
@@ -65,24 +69,48 @@ export class Candle_CAN extends CanBase {
   constructor(info: CanBaseInfo) {
     super()
     this.id = info.id
-    this.info = info
-    const readList = new Candle.candle_list_t()
+    this.info = cloneDeep(info)
 
+    const handleStr = String(this.info.handle)
+    const parts = handleStr.split('|')
+    if (parts.length !== 2) {
+      throw new Error(`Invalid handle format: ${handleStr}, expected "path|channel"`)
+    }
+    this.devicePath = parts[0]
+    this.channel = parseInt(parts[1], 10)
+
+    const readList = new Candle.candle_list_t()
     Candle.candle_list_scan(readList)
 
     const devicesx = Candle.DeviceArray.frompointer(readList.dev)
     const devicesArray: any[] = []
     for (let i = 0; i < readList.num_devices; i++) {
-      devicesArray.push(devicesx.getitem(i))
+      const dev = devicesx.getitem(i)
+      devicesArray.push(dev)
     }
-    const targetDevice = devicesArray.find((device) => device.interfaceNumber === this.info.handle)
-    if (!targetDevice) {
-      throw new Error(`Device with interfaceNumber ${this.info.handle} not found`)
-    }
-    const target = new Candle.candle_device_t()
 
-    this.target = targetDevice
-    this.channel = targetDevice.interfaceNumber
+    const targetDevice = devicesArray.find((device) => {
+      const devPath = Candle.GetDevicePath(device)
+      return devPath === this.devicePath && device.interfaceNumber === this.channel
+    })
+
+    if (!targetDevice) {
+      throw new Error(`Device not found: path="${this.devicePath}", channel=${this.channel}`)
+    }
+
+    let deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
+
+    if (!deviceEntry) {
+      if (!Candle.candle_dev_open(targetDevice)) {
+        throw new Error(`Failed to open device: ${this.devicePath}`)
+      }
+      deviceEntry = { device: targetDevice, refCount: 1 }
+      Candle_CAN.openedDevices.set(this.devicePath, deviceEntry)
+    } else {
+      deviceEntry.refCount++
+    }
+
+    this.target = deviceEntry.device
 
     if (this.info.bitrate.clock == undefined) {
       throw new Error('Clock frequency is not set')
@@ -90,11 +118,7 @@ export class Candle_CAN extends CanBase {
 
     this.event = new EventEmitter()
 
-    this.log = new CanLOG('CANABLE', info.name, this.id, this.event)
-
-    if (!Candle.candle_dev_open(this.target)) {
-      throw new Error('Open device failed')
-    }
+    this.log = new CanLOG('CANABLE', this.info.name, this.id, this.event)
 
     try {
       // Use the device's actual clock frequency from BT_CONST for all calculations
@@ -102,40 +126,44 @@ export class Candle_CAN extends CanBase {
       const data_cap = this.target.data_bt_const
       const userClock = Number(this.info.bitrate.clock) * 1000000
 
-      // If user-specified clock doesn't match device's actual fclk_can,
-      // auto-correct to use the device's clock (with a warning)
+      // Validate clock frequency matches device capability
       if (userClock != cap.fclk_can) {
-        sysLog.warn(
-          `Clock frequency auto-corrected: user specified ${userClock} Hz, device reports ${cap.fclk_can} Hz. Using device clock.`
+        throw new Error(
+          `Clock frequency mismatch: configuration specifies ${userClock} Hz, ` +
+            `but device reports ${cap.fclk_can} Hz. ` +
+            `Please update the device configuration to match the hardware.`
         )
       }
       const actualClock = cap.fclk_can
 
       // Validate baud rate config against the device's actual clock
-      if (info.bitrate.freq) {
+      if (this.info.bitrate.freq) {
         const calcFreq = Math.floor(
           actualClock /
-            (info.bitrate.preScaler * (1 + info.bitrate.timeSeg1 + info.bitrate.timeSeg2))
+            (this.info.bitrate.preScaler *
+              (1 + this.info.bitrate.timeSeg1 + this.info.bitrate.timeSeg2))
         )
         // Allow 1% error tolerance
-        if (Math.abs(calcFreq - info.bitrate.freq) / info.bitrate.freq > 0.01) {
+        if (Math.abs(calcFreq - this.info.bitrate.freq) / this.info.bitrate.freq > 0.01) {
           throw new Error(
-            `Invalid CAN bitrate config: expected ${info.bitrate.freq} Hz, got ${calcFreq} Hz (fclk=${actualClock}). ` +
-              `preScaler=${info.bitrate.preScaler}, ` +
-              `timeSeg1=${info.bitrate.timeSeg1}, ` +
-              `timeSeg2=${info.bitrate.timeSeg2}`
+            `Invalid CAN bitrate config: expected ${this.info.bitrate.freq} Hz, got ${calcFreq} Hz (fclk=${actualClock}). ` +
+              `preScaler=${this.info.bitrate.preScaler}, ` +
+              `timeSeg1=${this.info.bitrate.timeSeg1}, ` +
+              `timeSeg2=${this.info.bitrate.timeSeg2}`
           )
         }
       }
-      if (Candle_CAN.candleOpened == false) {
+
+      const deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
+      if (deviceEntry && deviceEntry.refCount === 1) {
         const candleInfo = {
           channel_count: this.target.dconf.icount,
           HW_version: `${(this.target.dconf.hw_version >> 24) & 0xff}.${(this.target.dconf.hw_version >> 16) & 0xff}.${(this.target.dconf.hw_version >> 8) & 0xff}`,
           SW_version: `${(this.target.dconf.sw_version >> 16) & 0xff}.${(this.target.dconf.sw_version >> 8) & 0xff}.${(this.target.dconf.sw_version >> 0) & 0xff}`
         }
-        sysLog.info(`candle info: ${JSON.stringify(candleInfo)}`)
+        sysLog.info(`candle ${this.info.name}: ${JSON.stringify(candleInfo)}`)
         sysLog.info(
-          `candle arb timing: ${JSON.stringify({
+          `candle ${this.info.name} arb timing: ${JSON.stringify({
             fclk_can: cap.fclk_can,
             tseg1_min: cap.tseg1_min,
             tseg1_max: cap.tseg1_max,
@@ -150,7 +178,7 @@ export class Candle_CAN extends CanBase {
         )
         if (cap.feature & 0x100) {
           sysLog.info(
-            `candle fd timing: ${JSON.stringify({
+            `candle ${this.info.name} fd timing: ${JSON.stringify({
               fclk_can: data_cap.fclk_can,
               tseg1_min: data_cap.tseg1_min,
               tseg1_max: data_cap.tseg1_max,
@@ -164,45 +192,50 @@ export class Candle_CAN extends CanBase {
             })}`
           )
         }
-        Candle_CAN.candleOpened = true
       }
-      if (info.bitrate.timeSeg1 < cap.tseg1_min || info.bitrate.timeSeg1 > cap.tseg1_max) {
+      if (
+        this.info.bitrate.timeSeg1 < cap.tseg1_min ||
+        this.info.bitrate.timeSeg1 > cap.tseg1_max
+      ) {
         throw new Error(
-          `Time segment 1 (${info.bitrate.timeSeg1}) out of valid range [${cap.tseg1_min}-${cap.tseg1_max}], open fail, please modify parameters and start again`
+          `Time segment 1 (${this.info.bitrate.timeSeg1}) out of valid range [${cap.tseg1_min}-${cap.tseg1_max}], open fail, please modify parameters and start again`
         )
       }
 
-      if (info.bitrate.timeSeg2 < cap.tseg2_min || info.bitrate.timeSeg2 > cap.tseg2_max) {
+      if (
+        this.info.bitrate.timeSeg2 < cap.tseg2_min ||
+        this.info.bitrate.timeSeg2 > cap.tseg2_max
+      ) {
         throw new Error(
-          `Time segment 2 (${info.bitrate.timeSeg2}) out of valid range [${cap.tseg2_min}-${cap.tseg2_max}], open fail, please modify parameters and start again`
+          `Time segment 2 (${this.info.bitrate.timeSeg2}) out of valid range [${cap.tseg2_min}-${cap.tseg2_max}], open fail, please modify parameters and start again`
         )
       }
 
       // Check prescaler (BRP)
-      if (info.bitrate.preScaler < cap.brp_min || info.bitrate.preScaler > cap.brp_max) {
+      if (this.info.bitrate.preScaler < cap.brp_min || this.info.bitrate.preScaler > cap.brp_max) {
         throw new Error(
-          `Prescaler (${info.bitrate.preScaler}) out of valid range [${cap.brp_min}-${cap.brp_max}], open fail, please modify parameters and start again`
+          `Prescaler (${this.info.bitrate.preScaler}) out of valid range [${cap.brp_min}-${cap.brp_max}], open fail, please modify parameters and start again`
         )
       }
       //sjw
-      if (info.bitrate.sjw > cap.sjw_max) {
+      if (this.info.bitrate.sjw > cap.sjw_max) {
         throw new Error(
-          `SJW (${info.bitrate.sjw}) out of valid range [0-${cap.sjw_max}], open fail, please modify parameters and start again`
+          `SJW (${this.info.bitrate.sjw}) out of valid range [0-${cap.sjw_max}], open fail, please modify parameters and start again`
         )
       }
       const bittiming = new Candle.candle_bittiming_t()
       bittiming.prop_seg = 1
-      bittiming.phase_seg1 = info.bitrate.timeSeg1 - 1
-      bittiming.phase_seg2 = info.bitrate.timeSeg2
-      bittiming.sjw = info.bitrate.sjw
-      bittiming.brp = info.bitrate.preScaler
+      bittiming.phase_seg1 = this.info.bitrate.timeSeg1 - 1
+      bittiming.phase_seg2 = this.info.bitrate.timeSeg2
+      bittiming.sjw = this.info.bitrate.sjw
+      bittiming.brp = this.info.bitrate.preScaler
 
       if (!Candle.candle_channel_set_timing(this.target, this.channel, bittiming)) {
         throw new Error('Set timing failed')
       }
       const ra = new Candle.Uint8Array(1)
 
-      if (info.candleRes) {
+      if (this.info.candleRes) {
         ra.setitem(0, 1)
       } else {
         ra.setitem(0, 0)
@@ -216,7 +249,7 @@ export class Candle_CAN extends CanBase {
 
       if (getSuccess) {
         const currentResState = currentRes[0] === 1
-        const configResState = info.candleRes
+        const configResState = this.info.candleRes
 
         // Only perform the set operation when the configuration value is inconsistent with the hardware state
         if (currentResState !== configResState) {
@@ -244,7 +277,7 @@ export class Candle_CAN extends CanBase {
 
       let flag = 0
       //canfd config
-      if (info.canfd && info.bitratefd) {
+      if (this.info.canfd && this.info.bitratefd) {
         // Verify device actually supports CAN FD before proceeding
         // (GS_CAN_FEATURE_FD = BIT(8) = 0x100, same as CANDLE_MODE_FD)
         if (!(cap.feature & 0x100)) {
@@ -256,40 +289,40 @@ export class Candle_CAN extends CanBase {
         //check
         const canfd_cap = this.target.data_bt_const
         if (
-          info.bitratefd.timeSeg1 < canfd_cap.tseg1_min ||
-          info.bitratefd.timeSeg1 > canfd_cap.tseg1_max
+          this.info.bitratefd.timeSeg1 < canfd_cap.tseg1_min ||
+          this.info.bitratefd.timeSeg1 > canfd_cap.tseg1_max
         ) {
           throw new Error(
-            `FD time segment 1 (${info.bitratefd.timeSeg1}) out of valid range [${canfd_cap.tseg1_min}-${canfd_cap.tseg1_max}], open fail, please modify parameters and start again`
+            `FD time segment 1 (${this.info.bitratefd.timeSeg1}) out of valid range [${canfd_cap.tseg1_min}-${canfd_cap.tseg1_max}], open fail, please modify parameters and start again`
           )
         }
         if (
-          info.bitratefd.timeSeg2 < canfd_cap.tseg2_min ||
-          info.bitratefd.timeSeg2 > canfd_cap.tseg2_max
+          this.info.bitratefd.timeSeg2 < canfd_cap.tseg2_min ||
+          this.info.bitratefd.timeSeg2 > canfd_cap.tseg2_max
         ) {
           throw new Error(
-            `FD time segment 2 (${info.bitratefd.timeSeg2}) out of valid range [${canfd_cap.tseg2_min}-${canfd_cap.tseg2_max}], open fail, please modify parameters and start again`
+            `FD time segment 2 (${this.info.bitratefd.timeSeg2}) out of valid range [${canfd_cap.tseg2_min}-${canfd_cap.tseg2_max}], open fail, please modify parameters and start again`
           )
         }
         if (
-          info.bitratefd.preScaler < canfd_cap.brp_min ||
-          info.bitratefd.preScaler > canfd_cap.brp_max
+          this.info.bitratefd.preScaler < canfd_cap.brp_min ||
+          this.info.bitratefd.preScaler > canfd_cap.brp_max
         ) {
           throw new Error(
-            `FD prescaler (${info.bitratefd.preScaler}) out of valid range [${canfd_cap.brp_min}-${canfd_cap.brp_max}], open fail, please modify parameters and start again`
+            `FD prescaler (${this.info.bitratefd.preScaler}) out of valid range [${canfd_cap.brp_min}-${canfd_cap.brp_max}], open fail, please modify parameters and start again`
           )
         }
-        if (info.bitratefd.sjw > canfd_cap.sjw_max) {
+        if (this.info.bitratefd.sjw > canfd_cap.sjw_max) {
           throw new Error(
-            `FD SJW (${info.bitratefd.sjw}) out of valid range [0-${canfd_cap.sjw_max}], open fail, please modify parameters and start again`
+            `FD SJW (${this.info.bitratefd.sjw}) out of valid range [0-${canfd_cap.sjw_max}], open fail, please modify parameters and start again`
           )
         }
         const bittimingfd = new Candle.candle_bittiming_t()
         bittimingfd.prop_seg = 1
-        bittimingfd.phase_seg1 = info.bitratefd.timeSeg1 - 1
-        bittimingfd.phase_seg2 = info.bitratefd.timeSeg2
-        bittimingfd.sjw = info.bitratefd.sjw
-        bittimingfd.brp = info.bitratefd.preScaler
+        bittimingfd.phase_seg1 = this.info.bitratefd.timeSeg1 - 1
+        bittimingfd.phase_seg2 = this.info.bitratefd.timeSeg2
+        bittimingfd.sjw = this.info.bitratefd.sjw
+        bittimingfd.brp = this.info.bitratefd.preScaler
         if (!Candle.candle_channel_set_data_timing(this.target, this.channel, bittimingfd)) {
           throw new Error('Set data timing failed')
         }
@@ -327,8 +360,16 @@ export class Candle_CAN extends CanBase {
       this.attachCanMessage(this.busloadCb)
     } catch (err) {
       Candle.candle_channel_stop(this.target, this.channel)
-      Candle.candle_dev_close(this.target)
-      Candle_CAN.candleOpened = false
+
+      const deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
+      if (deviceEntry) {
+        deviceEntry.refCount--
+        if (deviceEntry.refCount === 0) {
+          Candle.candle_dev_close(this.target)
+          Candle_CAN.openedDevices.delete(this.devicePath)
+        }
+      }
+
       throw err
     }
   }
@@ -567,8 +608,8 @@ export class Candle_CAN extends CanBase {
 
         devices.push({
           label: friendlyNameStr,
-          id: `Candle_${device.interfaceNumber}`,
-          handle: device.interfaceNumber,
+          id: `Candle_Ch${device.interfaceNumber}_${pathStr.substring(0, 8)}`,
+          handle: `${pathStr}|${device.interfaceNumber}`,
           serialNumber: pathStr,
           extra: {
             candle: {
@@ -624,9 +665,15 @@ export class Candle_CAN extends CanBase {
       this.log.close()
       Candle.FreeTSFN(this.id)
       Candle.candle_channel_stop(this.target, this.channel)
-      Candle.candle_dev_close(this.target)
+      const deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
+      if (deviceEntry) {
+        deviceEntry.refCount--
+        if (deviceEntry.refCount === 0) {
+          Candle.candle_dev_close(this.target)
+          Candle_CAN.openedDevices.delete(this.devicePath)
+        }
+      }
     }
-    Candle_CAN.candleOpened = false
     this._close()
   }
   writeBase(
