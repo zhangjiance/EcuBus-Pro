@@ -13,6 +13,7 @@ export type { DataSet }
 export const useDataStore = defineStore('useDataStore', {
   state: (): DataSet => ({
     devices: {},
+    bridges: {},
     ia: {},
     tester: {},
     subFunction: {},
@@ -165,6 +166,7 @@ export const useDataStore = defineStore('useDataStore', {
     getData(): DataSet {
       return {
         devices: this.devices,
+        bridges: this.bridges,
         ia: this.ia,
         tester: this.tester,
         subFunction: this.subFunction,

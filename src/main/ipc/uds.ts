@@ -44,6 +44,7 @@ import { EthAddr, EthBaseInfo } from '../share/doip'
 import { createPwmDevice, getValidPwmDevices, PwmBase } from '../pwm'
 
 import { getCanDevices, openCanDevice } from '../docan/can'
+import { CanBridge, CanBridgeConfig } from '../docan/bridge'
 import dllLib from '../../../resources/lib/zlgcan.dll?asset&asarUnpack'
 import { getLinDevices, openLinDevice } from '../dolin'
 import { updateLinSignalVal } from '../util'
@@ -251,6 +252,14 @@ ipcMain.handle('ipc-get-can-devices', async (event, ...arg) => {
   return getCanDevices(arg[0])
 })
 
+ipcMain.handle('ipc-get-bridge-stats', async () => {
+  const stats: Record<string, ReturnType<CanBridge['getStats']>> = {}
+  bridgeMap.forEach((bridge, key) => {
+    stats[key] = bridge.getStats()
+  })
+  return stats
+})
+
 ipcMain.handle('ipc-get-eth-devices', async (event, ...arg) => {
   const vendor = arg[0].toUpperCase()
   if (vendor == 'SIMULATE') {
@@ -288,6 +297,7 @@ interface NodeItemA {
 }
 
 const canBaseMap = new Map<string, CanBase>()
+const bridgeMap = new Map<string, CanBridge>()
 const ethBaseMap = new Map<string, EthBaseInfo>()
 const linBaseMap = new Map<string, LinBase>()
 const pwmBaseMap = new Map<string, PwmBase>()
@@ -471,6 +481,47 @@ async function globalStart(data: DataSet, projectInfo: { path: string; name: str
   } catch (err: any) {
     sysLog.error(`${activeKey} - ${err.toString()}`)
     throw err
+  }
+
+  // Initialize CAN bridges
+  // Bridges are created AFTER all CAN devices are opened, connecting
+  // 'can-frame' events between paired CanBase instances.
+  for (const key in data.bridges) {
+    const bridgeConfig = data.bridges[key]
+    const sideADevice = data.devices[bridgeConfig.sideADeviceKey]
+    const sideBDevice = data.devices[bridgeConfig.sideBDeviceKey]
+
+    if (!sideADevice || !sideBDevice) {
+      sysLog.warn(
+        `[Bridge:${bridgeConfig.name}] Invalid device key(s): A=${bridgeConfig.sideADeviceKey}, B=${bridgeConfig.sideBDeviceKey}`
+      )
+      continue
+    }
+    if (sideADevice.type !== 'can' || sideBDevice.type !== 'can') {
+      sysLog.warn(`[Bridge:${bridgeConfig.name}] Both devices must be CAN type`)
+      continue
+    }
+
+    const sideA = canBaseMap.get(bridgeConfig.sideADeviceKey)
+    const sideB = canBaseMap.get(bridgeConfig.sideBDeviceKey)
+
+    if (!sideA || !sideB) {
+      sysLog.warn(
+        `[Bridge:${bridgeConfig.name}] Device not found in canBaseMap (device may have failed to open)`
+      )
+      continue
+    }
+
+    try {
+      const bridge = new CanBridge(bridgeConfig, sideA, sideB)
+      bridge.start()
+      bridgeMap.set(key, bridge)
+      sysLog.info(
+        `[Bridge:${bridgeConfig.name}] Created: ${sideA.info.name} <-> ${sideB.info.name}`
+      )
+    } catch (err: any) {
+      sysLog.error(`[Bridge:${bridgeConfig.name}] Failed to create: ${err.toString()}`)
+    }
   }
 
   //testes
@@ -918,6 +969,12 @@ export function globalStop(emit = false) {
     value.close()
   })
   testMap.clear()
+  // Stop bridges first (they hold event listeners on CAN devices)
+  bridgeMap.forEach((bridge) => {
+    bridge.stop()
+  })
+  bridgeMap.clear()
+
   canBaseMap.forEach((value) => {
     value.close()
     sysLog.info(`stop can device ${value.info.vendor}-${value.info.handle}`)

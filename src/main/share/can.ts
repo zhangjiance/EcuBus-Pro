@@ -488,6 +488,8 @@ export interface CanDevice {
   handle: any
   serialNumber?: string
   busy?: boolean
+  /** True if this is a Vector Virtual CAN channel (no physical transceiver) */
+  isVirtual?: boolean
   /** Vendor-specific metadata, keyed by vendor name */
   extra?: {
     candle?: {

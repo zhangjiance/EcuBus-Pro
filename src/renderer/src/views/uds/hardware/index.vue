@@ -102,6 +102,12 @@
           :vendor="activeTree.vendor"
           @change="nodeChange"
         />
+        <canBridgeVue
+          v-else-if="activeTree.type == 'bridge'"
+          ref="bridgeNodeRef"
+          :index="activeTree.id"
+          @change="nodeChange"
+        />
       </div>
     </div>
   </div>
@@ -126,6 +132,7 @@ import circlePlusFilled from '@iconify/icons-ep/circle-plus-filled'
 import removeIcon from '@iconify/icons-ep/remove'
 import { useDataStore } from '@r/stores/data'
 import canNodeVue from './canNode.vue'
+import canBridgeVue from './canBridge.vue'
 import ethNodeVue from './ethNode.vue'
 import { CanVendor } from 'nodeCan/can'
 import { Layout } from '../layout'
@@ -156,6 +163,7 @@ const globalStart = useGlobalStart()
 
 // Refs for node components to call save method
 const canNodeRef = ref()
+const bridgeNodeRef = ref()
 const ethNodeRef = ref()
 const linNodeRef = ref()
 const pwmNodeRef = ref()
@@ -191,6 +199,8 @@ async function showSaveDialog(done: () => void): Promise<void> {
       saved = await linNodeRef.value.save?.()
     } else if (activeTree.value?.type == 'pwm' && pwmNodeRef.value) {
       saved = await pwmNodeRef.value.save?.()
+    } else if (activeTree.value?.type == 'bridge' && bridgeNodeRef.value) {
+      saved = await bridgeNodeRef.value.save()
     }
 
     if (saved) {
@@ -245,7 +255,19 @@ function removeDevice(id: string) {
         dataModify.value = false
         activeTree.value = undefined
       }
-      delete devices.devices[id]
+      if (activeTree.value?.type === 'bridge' || devices.bridges[id]) {
+        delete devices.bridges[id]
+      } else {
+        // Before deleting a CAN device, clean up any bridges referencing it
+        for (const bridgeKey of Object.keys(devices.bridges)) {
+          const b = devices.bridges[bridgeKey]
+          if (b.sideADeviceKey === id || b.sideBDeviceKey === id) {
+            delete devices.bridges[bridgeKey]
+            treeRef.value?.remove(bridgeKey)
+          }
+        }
+        delete devices.devices[id]
+      }
       treeRef.value?.remove(id)
     })
     .catch(() => {
@@ -268,31 +290,49 @@ function addNewDevice(node: tree) {
 }
 
 function nodeChange(id: string, name: string) {
-  //change tree stuff
-
   const node = treeRef.value?.getNode(id)
   if (node) {
     node.data.label = name
   } else {
-    // 按照devices.devices的顺序计算索引（新设备已经在devices.devices中），与 buildTree 一致从 1 开始
-    const deviceIndexMap = new Map<string, number>()
-    let index = 1
-    for (const key of Object.keys(devices.devices)) {
-      deviceIndexMap.set(key, index++)
-    }
-    const newIndex = deviceIndexMap.get(id) ?? Object.keys(devices.devices).length + 1
+    if (activeTree.value?.type === 'bridge') {
+      // Bridge: append under BRIDGE_ROOT
+      const bridge = devices.bridges[id]
+      const sideA = devices.devices[bridge?.sideADeviceKey ?? '']
+      const sideB = devices.devices[bridge?.sideBDeviceKey ?? '']
+      const sideALabel = sideA?.canDevice?.name ?? bridge?.sideADeviceKey ?? '?'
+      const sideBLabel = sideB?.canDevice?.name ?? bridge?.sideBDeviceKey ?? '?'
+      treeRef.value?.append(
+        {
+          label: `${name} [${sideALabel} <-> ${sideBLabel}]`,
+          vendor: 'simulate' as CanVendor,
+          append: false,
+          id: id,
+          type: 'bridge',
+          index: Object.keys(devices.bridges).length
+        },
+        'BRIDGE_ROOT'
+      )
+    } else {
+      // Device: append under vendor parent
+      const deviceIndexMap = new Map<string, number>()
+      let index = 1
+      for (const key of Object.keys(devices.devices)) {
+        deviceIndexMap.set(key, index++)
+      }
+      const newIndex = deviceIndexMap.get(id) ?? Object.keys(devices.devices).length + 1
 
-    treeRef.value?.append(
-      {
-        label: name,
-        append: false,
-        id: id,
-        vendor: activeTree.value?.vendor,
-        type: activeTree.value?.type,
-        index: newIndex
-      },
-      activeTree.value?.id
-    )
+      treeRef.value?.append(
+        {
+          label: name,
+          append: false,
+          id: id,
+          vendor: activeTree.value?.vendor,
+          type: activeTree.value?.type,
+          index: newIndex
+        },
+        activeTree.value?.id
+      )
+    }
   }
   activeTree.value = undefined
 }
@@ -300,7 +340,7 @@ function nodeChange(id: string, name: string) {
 interface tree {
   label: string
   vendor: CanVendor
-  type?: 'can' | 'lin' | 'eth' | 'pwm'
+  type?: 'can' | 'lin' | 'eth' | 'pwm' | 'bridge'
   append: boolean
   id: string
   children?: tree[]
@@ -427,6 +467,11 @@ async function buildTree() {
   for (const key of Object.keys(devices.devices)) {
     deviceIndexMap.set(key, index++)
   }
+  const bridgeIndexMap = new Map<string, number>()
+  let bridgeIndex = 1
+  for (const key of Object.keys(devices.bridges)) {
+    bridgeIndexMap.set(key, bridgeIndex++)
+  }
 
   if (vendors.includes('ecubus')) {
     const ecubus: tree = {
@@ -532,6 +577,31 @@ async function buildTree() {
     addSubTree('candle', candle, deviceIndexMap)
   }
 
+  // Bridge section (vendor-agnostic)
+  const bridgeRoot: tree = {
+    label: i18next.t('uds.hardware.bridge.title'),
+    vendor: 'simulate' as CanVendor, // sentinel, bridges are vendor-agnostic
+    append: true,
+    id: 'BRIDGE_ROOT',
+    type: 'bridge',
+    children: []
+  }
+  t.push(bridgeRoot)
+  for (const [key, bridge] of Object.entries(devices.bridges)) {
+    const sideA = devices.devices[bridge.sideADeviceKey]
+    const sideB = devices.devices[bridge.sideBDeviceKey]
+    const sideALabel = sideA?.canDevice?.name ?? bridge.sideADeviceKey
+    const sideBLabel = sideB?.canDevice?.name ?? bridge.sideBDeviceKey
+    bridgeRoot.children!.push({
+      label: `${bridge.name} [${sideALabel} <-> ${sideBLabel}]`,
+      vendor: 'simulate' as CanVendor,
+      append: false,
+      id: key,
+      type: 'bridge',
+      index: bridgeIndexMap.get(key)
+    })
+  }
+
   tData.value = t
 }
 
@@ -549,6 +619,14 @@ watch(deviceId, (val) => {
     }
   }
 })
+// Rebuild tree when devices or bridges change (e.g., device deletion cleans up bridges)
+watch(
+  () => [Object.keys(devices.devices).length, Object.keys(devices.bridges).length],
+  () => {
+    buildTree()
+  }
+)
+
 onBeforeMount(() => {
   buildTree()
 })

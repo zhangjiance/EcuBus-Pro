@@ -264,8 +264,20 @@ export type ReplayItem = {
   useOriginalTime?: boolean
 }
 
+export interface CanBridgeInfo {
+  id: string
+  name: string
+  /** Device key for Side A (from data.devices) */
+  sideADeviceKey: string
+  /** Device key for Side B (from data.devices) */
+  sideBDeviceKey: string
+  /** Optional CAN ID filter — only forward frames matching these IDs (empty = all) */
+  filterIds?: number[]
+}
+
 export interface DataSet {
   devices: Record<string, UdsDevice>
+  bridges: Record<string, CanBridgeInfo>
   tester: Record<string, TesterInfo>
   subFunction: Record<string, { name: string; subFunction: string }[]>
   nodes: Record<string, NodeItem>

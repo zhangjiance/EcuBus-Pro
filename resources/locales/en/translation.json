@@ -1187,6 +1187,38 @@
           "zlgCheckCalculator": "ZLG (check the ZLG Baud Calculator)"
         }
       },
+      "bridge": {
+        "title": "Bridges"
+      },
+      "canBridge": {
+        "sections": {
+          "bridgeConfig": "Bridge Configuration",
+          "filter": "CAN ID Filter (Optional)"
+        },
+        "labels": {
+          "name": "Bridge Name",
+          "sideA": "Side A (Source)",
+          "sideB": "Side B (Target)",
+          "enableFilter": "Enable Filter"
+        },
+        "hints": {
+          "filterHint": "Only forward frames matching specific CAN IDs. Leave empty to forward all frames."
+        },
+        "placeholders": {
+          "filterIds": "e.g., 0x100, 0x200, 0x300"
+        },
+        "buttons": {
+          "addBridge": "Add Bridge",
+          "saveBridge": "Save Bridge"
+        },
+        "validation": {
+          "nameExists": "The bridge name already exists",
+          "inputName": "Please input bridge name",
+          "selectDevice": "Please select a CAN device",
+          "sameDevice": "Side A and Side B must be different devices",
+          "deviceNotFound": "Referenced device no longer exists, please re-select"
+        }
+      },
       "bitTimingCalculator": {
         "dialogs": {
           "title": "Bit Timing Configuration: {{bitRate}} kbit/s @ {{clockFreq}} MHz"

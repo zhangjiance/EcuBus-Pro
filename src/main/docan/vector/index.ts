@@ -129,6 +129,9 @@ export class VECTOR_CAN extends CanBase {
       this.channelConfig.hwChannel
     )
 
+    // 检测是否为虚拟通道（Virtual CAN Bus）
+    const isVirtual = this.channelConfig.name.indexOf('Virtual') !== -1
+
     // 总线类型处理
     if (this.channelConfig.busParams.busType === 1) {
       // CAN端口配置（完整条件分支）
@@ -160,62 +163,70 @@ export class VECTOR_CAN extends CanBase {
         VECTOR.xlClosePort(this.PortHandle.value())
         throw new Error(this.getError(xlStatus))
       }
-      if (this.PermissionMask.value() == 0) {
-        //allow failed
-        // throw new Error('PermissionMask failed')
+
+      // 检查是否获得 init access
+      // 虚拟通道共享场景下，CANape 等应用可能先占用了 init access
+      const hasInitAccess = this.PermissionMask.value() !== 0
+      if (!hasInitAccess) {
         global.sysLog.warn(
           `${this.info.name}: No init access for the channel. The channel is configured by another application.`
         )
       }
 
-      // CAN波特率配置（完整逻辑）
-      if (info.canfd && info.bitratefd) {
-        //CANFD使能
-        const fdParams = new VECTOR.XLcanFdConf()
-        fdParams.arbitrationBitRate = info.bitrate.freq //普通波特率
-        fdParams.tseg1Abr = info.bitrate.timeSeg1
-        fdParams.tseg2Abr = info.bitrate.timeSeg2
-        fdParams.sjwAbr = info.bitrate.sjw
+      // CAN波特率配置 — 仅在有 init access 时执行
+      // 无 init access 时（如虚拟通道被 CANape 占用），通道配置由持有 init access 的应用完成
+      if (hasInitAccess) {
+        if (info.canfd && info.bitratefd) {
+          //CANFD使能
+          const fdParams = new VECTOR.XLcanFdConf()
+          fdParams.arbitrationBitRate = info.bitrate.freq //普通波特率
+          fdParams.tseg1Abr = info.bitrate.timeSeg1
+          fdParams.tseg2Abr = info.bitrate.timeSeg2
+          fdParams.sjwAbr = info.bitrate.sjw
 
-        fdParams.dataBitRate = info.bitratefd.freq //CANFD波特率
-        fdParams.tseg1Dbr = info.bitratefd.timeSeg1
-        fdParams.tseg2Dbr = info.bitratefd.timeSeg2
-        fdParams.sjwDbr = info.bitratefd.sjw
-        fdParams.options = 0 // 可选：启用 ISO 标准帧格式
+          fdParams.dataBitRate = info.bitratefd.freq //CANFD波特率
+          fdParams.tseg1Dbr = info.bitratefd.timeSeg1
+          fdParams.tseg2Dbr = info.bitratefd.timeSeg2
+          fdParams.sjwDbr = info.bitratefd.sjw
+          fdParams.options = 0 // 可选：启用 ISO 标准帧格式
 
-        xlStatus = VECTOR.xlCanFdSetConfiguration(
-          this.PortHandle.value(),
-          this.channelMask,
-          fdParams
-        )
-        if (xlStatus !== 0) {
-          throw new Error(this.getError(xlStatus))
-        }
-      } else {
-        //普通CAN
-        const params = new VECTOR.XLchipParams()
-        params.bitRate = info.bitrate.freq
-        params.sjw = info.bitrate.sjw
-        params.tseg1 = info.bitrate.timeSeg1
-        params.tseg2 = info.bitrate.timeSeg2
-        params.sam = 1
+          xlStatus = VECTOR.xlCanFdSetConfiguration(
+            this.PortHandle.value(),
+            this.channelMask,
+            fdParams
+          )
+          if (xlStatus !== 0) {
+            throw new Error(this.getError(xlStatus))
+          }
+        } else {
+          //普通CAN
+          const params = new VECTOR.XLchipParams()
+          params.bitRate = info.bitrate.freq
+          params.sjw = info.bitrate.sjw
+          params.tseg1 = info.bitrate.timeSeg1
+          params.tseg2 = info.bitrate.timeSeg2
+          params.sam = 1
 
-        xlStatus = VECTOR.xlCanSetChannelParams(this.PortHandle.value(), this.channelMask, params)
-        if (xlStatus !== 0) {
-          throw new Error(this.getError(xlStatus))
+          xlStatus = VECTOR.xlCanSetChannelParams(this.PortHandle.value(), this.channelMask, params)
+          if (xlStatus !== 0) {
+            throw new Error(this.getError(xlStatus))
+          }
         }
       }
 
       // 通道激活（完整操作序列）
       xlStatus = VECTOR.xlDeactivateChannel(this.PortHandle.value(), this.channelMask)
 
-      xlStatus = VECTOR.xlCanSetChannelOutput(this.PortHandle.value(), this.channelMask, 1)
-      if (xlStatus !== 0) {
-        throw new Error('xlCanSetChannelOutput failed')
-      }
-      xlStatus = VECTOR.xlCanSetChannelMode(this.PortHandle.value(), this.channelMask, 1, 0)
-      if (xlStatus !== 0) {
-        throw new Error(this.getError(xlStatus))
+      // 虚拟通道跳过物理收发器配置（无实际收发器硬件）
+      if (!isVirtual) {
+        xlStatus = VECTOR.xlCanSetChannelOutput(this.PortHandle.value(), this.channelMask, 1)
+        if (xlStatus !== 0) {
+          throw new Error('xlCanSetChannelOutput failed')
+        }
+        xlStatus = VECTOR.xlCanSetChannelMode(this.PortHandle.value(), this.channelMask, 1, 0)
+        if (xlStatus !== 0) {
+          throw new Error(this.getError(xlStatus))
+        }
       }
       // xlStatus = VECTOR.xlCanSetReceiveMode(PortHandle.value(),0, 1)
       // if (xlStatus !== 0) {
@@ -225,7 +236,14 @@ export class VECTOR_CAN extends CanBase {
       // if (xlStatus !== 0) {
       //   throw new Error('xlCanSetChannelTransceiver failed')
       // }
-      xlStatus = VECTOR.xlActivateChannel(this.PortHandle.value(), this.channelMask, 1, 8)
+      // 虚拟通道使用 XL_ACTIVATE_NONE (0)，物理通道使用 XL_ACTIVATE_RESET_CLOCK (8)
+      const activateFlags = isVirtual ? 0 : 8
+      xlStatus = VECTOR.xlActivateChannel(
+        this.PortHandle.value(),
+        this.channelMask,
+        1,
+        activateFlags
+      )
       if (xlStatus !== 0) {
         throw new Error('ActivateChannel failed')
       }
@@ -547,7 +565,9 @@ export class VECTOR_CAN extends CanBase {
             id: `VECTOR_${num}_${busType}`, //'VECTOR_0_#LIN' = 通道索引_#总线类型
             //hwType channelBusCapabilities hwIndex hwChannel
             handle: `${channel.hwChannel}:${num}`, //'0:0' = 第几路总线：通道索引
-            serialNumber: channel.serialNumber
+            serialNumber: channel.serialNumber,
+            // 标记虚拟通道，构造函数中据此跳过物理收发器相关配置
+            isVirtual: channel.name.indexOf('Virtual') !== -1
           })
         }
       }
