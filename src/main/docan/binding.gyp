@@ -23,7 +23,8 @@
                     'cflags_cc': [ ],
                     'libraries': [
                         'winusb.lib',
-                        'setupapi.lib'
+                        'setupapi.lib',
+                        'cfgmgr32.lib'
                     ],
                     'defines': [ 'DELAYLOAD_HOOK' ],
                     'msvs_settings': {
@@ -35,7 +36,8 @@
                     'link_settings': {
                         'libraries': [
                             'winusb.lib',
-                            'setupapi.lib'
+                            'setupapi.lib',
+                            'cfgmgr32.lib'
                         ]
                     }
                 },'OS=="linux"', {

@@ -22,8 +22,13 @@
 #include "candle.h"
 #include <stdlib.h>
 #include "candle_defs.h"
+#include <cfgmgr32.h>
 #include "candle_ctrl_req.h"
 #include "ch_9.h"
+
+#ifndef USB_STRING_DESCRIPTOR_TYPE
+#define USB_STRING_DESCRIPTOR_TYPE 0x03
+#endif
 
 static bool candle_dev_interal_open(candle_handle hdev);
 
@@ -90,6 +95,24 @@ static bool candle_read_di(HDEVINFO hdi, SP_DEVICE_INTERFACE_DATA interfaceData,
         sizeof(dev->friendly_name),
         &friendlyNameSize);
 }
+
+    /* 记录父 USB 设备实例 ID：composite 设备的每个 interface 都是独立的
+     * 设备节点，但父节点相同，主机侧据此把同一台设备的接口聚合到一起 */
+    dev->parent_id[0] = '\0';
+    DEVINST parentInstance = 0;
+    if (CM_Get_Parent(&parentInstance, deviceInfoData.DevInst, 0) == CR_SUCCESS) {
+        if (CM_Get_Device_IDA(parentInstance, dev->parent_id,
+                              (ULONG)sizeof(dev->parent_id), 0) != CR_SUCCESS) {
+            dev->parent_id[0] = '\0';
+        }
+    }
+    if (dev->parent_id[0] == '\0') {
+        /* 非 composite 设备（或取父节点失败）时退化为自身实例 ID */
+        if (CM_Get_Device_IDA(deviceInfoData.DevInst, dev->parent_id,
+                              (ULONG)sizeof(dev->parent_id), 0) != CR_SUCCESS) {
+            dev->parent_id[0] = '\0';
+        }
+    }
 
     /* try to open to read device infos and see if it is avail */
     if (candle_dev_interal_open(dev)) {
@@ -283,6 +306,28 @@ static bool candle_dev_interal_open(candle_handle hdev)
     if (pipes_found != 2) {
         dev->last_error = CANDLE_ERR_PARSE_IF_DESCR;
         goto winusb_free;
+    }
+
+    /* 读取接口字符串（iInterface）：同一设备的多个接口靠它区分，
+     * 例如 "HScanT GS can0" ... "HScanT GS can3" */
+    dev->iface_name[0] = '\0';
+    if (ifaceDescriptor.iInterface != 0) {
+        UCHAR strDesc[256];
+        ULONG strLen = 0;
+        if (WinUsb_GetDescriptor(dev->winUSBHandle, USB_STRING_DESCRIPTOR_TYPE,
+                                 ifaceDescriptor.iInterface, 0x0409,
+                                 strDesc, sizeof(strDesc), &strLen) &&
+            strLen > 2) {
+            ULONG chars = (strLen - 2) / 2;
+            if (chars > sizeof(dev->iface_name) - 1) {
+                chars = sizeof(dev->iface_name) - 1;
+            }
+            for (ULONG i = 0; i < chars; i++) {
+                USHORT wc = (USHORT)(strDesc[2 + i * 2] | (strDesc[3 + i * 2] << 8));
+                dev->iface_name[i] = (wc < 0x80) ? (char)wc : '?';
+            }
+            dev->iface_name[chars] = '\0';
+        }
     }
 
     char use_raw_io = 1;
@@ -693,7 +738,7 @@ uint32_t __stdcall DLL candle_frame_timestamp_us(candle_frame_t *frame)
 bool __stdcall DLL candle_channel_get_can_resister_enable_state(candle_handle hdev, uint8_t ch, uint8_t *enable)
 {
     candle_device_t *dev = (candle_device_t*)hdev;
-    candle_ctrl_get_can_resister_enable_state(dev, ch, enable);
+    return candle_ctrl_get_can_resister_enable_state(dev, ch, enable);
 }
 
 bool __stdcall DLL candle_channel_set_can_resister_enable_state(candle_handle hdev, uint8_t ch, uint8_t *enable)

@@ -72,6 +72,11 @@ typedef struct {
 typedef struct {
     wchar_t path[256];
     char friendly_name[256];  // Add friendly name field as char array
+    // 父 USB 设备实例 ID（同一物理设备的所有接口共用），
+    // 用于把 composite 设备的多个 interface 归到同一台设备上
+    char parent_id[256];
+    // 接口字符串（iInterface），例如 "HScanT GS can0"，用于区分同一设备的多个接口
+    char iface_name[128];
     candle_devstate_t state;
     candle_err_t last_error;
     DWORD error;

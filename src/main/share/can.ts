@@ -495,6 +495,17 @@ export interface CanDevice {
       dataCap?: CandleCapability
       fdSupported?: boolean
       Res?: boolean
+      /** Logical CAN channel index (value passed to the vendor requests) */
+      channel?: number
+      /** Total amount of CAN channels carried by this USB interface */
+      channelCount?: number
+      /**
+       * `single`: one USB interface per channel (custom Windows firmware)
+       * `multi` : one USB interface carrying `channelCount` channels (standard gs_usb layout)
+       */
+      mode?: 'single' | 'multi'
+      /** Device interface path used as key for the shared native context */
+      parentKey?: string
     }
   }
 }

@@ -6,6 +6,7 @@ import {
   getLenByDlc,
   CanBaseInfo,
   CanDevice,
+  CandleCapability,
   getTsUs,
   CanMessage,
   getDlcByLen
@@ -25,11 +26,45 @@ interface CANFrame {
   ts: number
 }
 
+/** How the CAN channels are mapped onto the USB interfaces of one device. */
+export type CandleChannelMode = 'single' | 'multi'
+
+/** One selectable CAN channel. */
+export interface CandleChannelPlan {
+  /** USB device interface path (also the key of the shared native context) */
+  path: string
+  /** Display label, already containing the channel suffix when needed */
+  label: string
+  name: string
+  /** bInterfaceNumber of the interface that carries this channel */
+  mi: number
+  /** Logical channel index, written into wValue of vendor requests and the frame header */
+  channel: number
+  /** Total channels carried by `path` */
+  channelCount: number
+  mode: CandleChannelMode
+  busy: boolean
+  feature: number
+  cap: CandleCapability
+  dataCap?: CandleCapability
+}
+
+/** Per-interface runtime state shared by all channels living on the same USB interface. */
+interface CandleParentHub {
+  mode: CandleChannelMode
+  refCount: number
+  instances: Map<number, Candle_CAN>
+  /** Channels already reported as unknown, to log each one only once */
+  warnedChannels: Set<number>
+}
+
 export class Candle_CAN extends CanBase {
   event: EventEmitter
   info: CanBaseInfo
   target: any
   channel = 0
+  channelMode: CandleChannelMode = 'single'
+  channelCount = 1
   closed = false
   cnt = 0
 
@@ -40,8 +75,22 @@ export class Candle_CAN extends CanBase {
   startTime = getTsUs()
   tsOffset: number | undefined
 
-  // Device management: track opened devices by path
-  private static openedDevices = new Map<string, { device: any; refCount: number }>()
+  // Device management: track opened devices by path.
+  // `mode` / `channelCount` are recorded by the first opener, because a
+  // rescan of an already opened interface reports it as "in use" and loses
+  // the channel information.
+  private static openedDevices = new Map<
+    string,
+    { device: any; refCount: number; mode: CandleChannelMode; channelCount: number }
+  >()
+  // One native RX/TX context per USB interface; channels are demultiplexed by frame header
+  private static hubs = new Map<string, CandleParentHub>()
+  // Channel plan of the last healthy scan, per device interface path. A device
+  // opened by us reports itself as "in use" on the next scan, which would
+  // otherwise shrink the device list while it is running.
+  private static planCache = new Map<string, CandleChannelPlan[]>()
+  // Last logged classification per group, to avoid repeating it on every scan
+  private static lastGroupLog = new Map<string, string>()
   private devicePath: string = ''
 
   private readAbort = new AbortController()
@@ -66,6 +115,411 @@ export class Candle_CAN extends CanBase {
     }[]
   >()
 
+  /**
+   * Register a channel on the native context of its USB interface.
+   *
+   * The native side owns exactly one RX/TX thread per USB interface, so
+   * several channels sharing one interface (standard gs_usb layout) can be
+   * demultiplexed by the `channel` field of the frame header instead of
+   * fighting over the same URB set.
+   */
+  private static registerChannel(
+    path: string,
+    channel: number,
+    instance: Candle_CAN,
+    mode: CandleChannelMode
+  ) {
+    let hub = Candle_CAN.hubs.get(path)
+    if (!hub) {
+      hub = { mode, refCount: 0, instances: new Map(), warnedChannels: new Set() }
+      Candle_CAN.hubs.set(path, hub)
+      Candle.CreateTSFN(
+        path,
+        (msg: any) => Candle_CAN.dispatchRx(path, msg),
+        (err: any) => Candle_CAN.dispatchError(path, err)
+      )
+    }
+    hub.refCount++
+    hub.instances.set(channel, instance)
+    if (mode === 'multi') {
+      hub.mode = 'multi'
+    }
+  }
+
+  private static unregisterChannel(path: string, channel: number) {
+    const hub = Candle_CAN.hubs.get(path)
+    if (!hub) {
+      return
+    }
+    if (hub.instances.get(channel) !== undefined) {
+      hub.instances.delete(channel)
+      hub.refCount--
+    }
+    if (hub.refCount <= 0 || hub.instances.size === 0) {
+      Candle_CAN.hubs.delete(path)
+      Candle.FreeTSFN(path)
+    }
+  }
+
+  private static dispatchRx(path: string, msg: any) {
+    const hub = Candle_CAN.hubs.get(path)
+    if (!hub || !msg) {
+      return
+    }
+    if (hub.mode === 'multi' && msg.Channel !== undefined) {
+      const channel = Number(msg.Channel)
+      const instance = hub.instances.get(channel)
+      if (instance) {
+        instance.callback(msg)
+        return
+      }
+      // Echo frames must never be dropped, otherwise the TX promise would hang
+      // when a firmware reports an unexpected channel id.
+      if (msg.FrameType === 2) {
+        hub.instances.forEach((item) => item.callback(msg))
+        return
+      }
+      if (!hub.warnedChannels.has(channel)) {
+        hub.warnedChannels.add(channel)
+        sysLog.warn(
+          `candle ${path}: dropped frame with unknown channel ${channel} ` +
+            `(active channels: ${[...hub.instances.keys()].join(',') || 'none'})`
+        )
+      }
+      return
+    }
+    hub.instances.forEach((item) => item.callback(msg))
+  }
+
+  private static dispatchError(path: string, err: any) {
+    const hub = Candle_CAN.hubs.get(path)
+    if (!hub) {
+      return
+    }
+    hub.instances.forEach((item) => item.errorCallback(err))
+  }
+
+  /**
+   * Raw bytes of the DEVICE_CONFIG reply, for firmware debugging.
+   * Nothing is transformed here: reserved1..3, icount, sw_version, hw_version
+   * are dumped in wire order (little endian).
+   */
+  private static dconfHex(device: any): string {
+    const dc = device?.dconf
+    if (!dc) {
+      return ''
+    }
+    const le32 = (value: number) => {
+      const n = value >>> 0
+      return [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, (n >>> 24) & 0xff]
+    }
+    return [
+      Number(dc.reserved1) & 0xff,
+      Number(dc.reserved2) & 0xff,
+      Number(dc.reserved3) & 0xff,
+      Number(dc.icount) & 0xff,
+      ...le32(Number(dc.sw_version)),
+      ...le32(Number(dc.hw_version))
+    ]
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join(' ')
+  }
+
+  private static buildCap(device: any): {
+    cap: CandleCapability
+    dataCap?: CandleCapability
+    feature: number
+  } {
+    const cap = device.bt_const
+    const candleCap: CandleCapability = {
+      feature: cap.feature,
+      fclk_can: cap.fclk_can,
+      tseg1_min: cap.tseg1_min,
+      tseg1_max: cap.tseg1_max,
+      tseg2_min: cap.tseg2_min,
+      tseg2_max: cap.tseg2_max,
+      sjw_max: cap.sjw_max,
+      brp_min: cap.brp_min,
+      brp_max: cap.brp_max,
+      brp_inc: cap.brp_inc
+    }
+
+    let candleDataCap: CandleCapability | undefined
+    // Check if device supports CAN FD (feature bit 8 = 0x100)
+    if (cap.feature & 0x100) {
+      const dataCap = device.data_bt_const
+      candleDataCap = {
+        feature: dataCap.feature,
+        fclk_can: dataCap.fclk_can,
+        tseg1_min: dataCap.tseg1_min,
+        tseg1_max: dataCap.tseg1_max,
+        tseg2_min: dataCap.tseg2_min,
+        tseg2_max: dataCap.tseg2_max,
+        sjw_max: dataCap.sjw_max,
+        brp_min: dataCap.brp_min,
+        brp_max: dataCap.brp_max,
+        brp_inc: dataCap.brp_inc
+      }
+    }
+
+    return { cap: candleCap, dataCap: candleDataCap, feature: cap.feature }
+  }
+
+  /**
+   * Build the channel plan for every enumerated device interface.
+   *
+   * Two flavours are supported:
+   *  - `single`: one USB interface per CAN channel (custom Windows firmware).
+   *              channel = bInterfaceNumber, one channel per interface.
+   *  - `multi` : one USB interface carrying `dconf.icount + 1` channels
+   *              (standard Linux gs_usb layout). All frames of those channels
+   *              arrive on the same bulk pipe and carry the channel id in the
+   *              frame header.
+   *
+   * Interfaces that belong to the same physical device are grouped by the
+   * device interface path with the `&mi_XX` part removed, so an extra HID/CDC
+   * interface of the same composite device never turns into a CAN channel.
+   *
+   * The heuristic can be overridden with
+   * `ECUBUS_CANDLE_CHANNEL_MODE=interface|channel`.
+   */
+  /**
+   * Read the device interface path.
+   *
+   * The native side appends the parent USB device instance id (separated by
+   * 0x1f) so that all interfaces of one composite device can be grouped
+   * together. Only the part before the separator is stored in `handle`.
+   */
+  private static readPath(device: any): { path: string; parentId: string } {
+    const raw = String(Candle.GetDevicePath(device) || '')
+    const sep = raw.indexOf('\x1f')
+    if (sep < 0) {
+      return { path: raw, parentId: '' }
+    }
+    return { path: raw.substring(0, sep), parentId: raw.substring(sep + 1) }
+  }
+
+  /** bInterfaceNumber encoded in the device interface path (`&mi_XX`). */
+  private static miFromPath(path: string): number | undefined {
+    const match = /&mi_([0-9a-f]{2})/i.exec(path)
+    return match ? parseInt(match[1], 16) : undefined
+  }
+
+  static buildChannelPlans(rawList: any[], verbose = true): CandleChannelPlan[] {
+    const forceMode = (process.env.ECUBUS_CANDLE_CHANNEL_MODE || '').toLowerCase()
+    const forced: CandleChannelMode | undefined =
+      forceMode === 'multi' || forceMode === 'channel' || forceMode === 'single-interface'
+        ? 'multi'
+        : forceMode === 'interface' || forceMode === 'per-interface' || forceMode === 'single'
+          ? 'single'
+          : undefined
+
+    const groups = new Map<string, { device: any; path: string; parentId: string }[]>()
+    for (const device of rawList) {
+      const { path, parentId } = Candle_CAN.readPath(device)
+      // All interfaces of one composite device share the parent instance id.
+      // Fall back to the path without the &mi_XX part when it is unavailable.
+      const key = parentId || path.replace(/&mi_[0-9a-f]{2}/i, '')
+      const group = groups.get(key)
+      if (group) {
+        group.push({ device, path, parentId })
+      } else {
+        groups.set(key, [{ device, path, parentId }])
+      }
+    }
+
+    const plans: CandleChannelPlan[] = []
+
+    for (const [groupKey, entries] of groups) {
+      const items = entries
+        .map(({ device, path }) => ({
+          device,
+          path,
+          name: Candle.GetDeviceFriendlyName(device) as string,
+          // A busy interface could not be opened during the scan, so its
+          // bInterfaceNumber was not read: recover the MI from the path.
+          mi: Candle_CAN.miFromPath(path) ?? (Number(device.interfaceNumber) || 0),
+          icount: Number(device.dconf?.icount) || 0,
+          busy: Number(device.state) === 1
+        }))
+        .sort((a, b) => a.mi - b.mi)
+
+      const groupStart = plans.length
+
+      // Channels we already opened cannot be re-read (the device reports
+      // itself as "in use"): replay their cached plan so the device list stays
+      // complete and selectable while the device is running.
+      const replay: CandleChannelPlan[] = []
+      const fresh = items.filter((item) => {
+        const cached = Candle_CAN.planCache.get(item.path)
+        if (cached && Candle_CAN.openedDevices.has(item.path)) {
+          replay.push(...cached.map((plan) => ({ ...plan, busy: false })))
+          return false
+        }
+        return true
+      })
+
+      // Interfaces that cannot be probed during the scan (HID, busy devices,
+      // interfaces without a WinUSB pipe pair) are excluded from the
+      // classification, but stay selectable (and disabled).
+      const usable = fresh.filter((item) => !item.busy)
+      const candidates = usable.length > 0 ? usable : fresh
+
+      if (candidates.length === 0) {
+        // Every channel of this device is opened by us, nothing left to probe.
+        plans.push(...replay)
+        if (verbose) {
+          const logLine =
+            `candle group ${groupKey}: all interfaces in use, reused cached plan ` +
+            `(${replay.length} channels)`
+          if (Candle_CAN.lastGroupLog.get(`${groupKey}:busy`) !== logLine) {
+            Candle_CAN.lastGroupLog.set(`${groupKey}:busy`, logLine)
+            sysLog.info(logLine)
+          }
+        }
+        continue
+      }
+
+      // A single interface reporting icount >= 1 carries all channels on its
+      // own bulk pipe (standard gs_usb layout). As soon as the device exposes
+      // more than one usable interface, every interface is one channel and the
+      // firmware simply reports the device wide icount on each of them.
+      let mode: CandleChannelMode
+      if (forced) {
+        mode = forced
+      } else {
+        mode = candidates.length === 1 && candidates[0].icount >= 1 ? 'multi' : 'single'
+      }
+
+      const primary = candidates[0]
+      const multiChannelCount = primary.icount + 1
+      // Several interfaces of one device usually share the same friendly name
+      // (the per interface iInterface string is used when the firmware
+      // provides one), so a channel suffix is added when the names collide.
+      const distinctNames = new Set(candidates.map((item) => item.name)).size === candidates.length
+
+      const handled = new Set<any>()
+      if (mode === 'multi') {
+        candidates.forEach((item) => handled.add(item.device))
+        const { cap, dataCap, feature } = Candle_CAN.buildCap(primary.device)
+        for (let ch = 0; ch < multiChannelCount; ch++) {
+          plans.push({
+            path: primary.path,
+            label: `${primary.name} (Ch${ch})`,
+            name: primary.name,
+            mi: primary.mi,
+            channel: ch,
+            channelCount: multiChannelCount,
+            mode,
+            busy: primary.busy,
+            feature,
+            cap,
+            dataCap
+          })
+        }
+        if (verbose && candidates.length > 1) {
+          sysLog.warn(
+            `candle group ${groupKey}: ${candidates.length} interfaces, icount=${primary.icount}, ` +
+              `channel mode forced to multi on interface ${primary.mi}`
+          )
+        }
+      } else {
+        for (const item of candidates) {
+          handled.add(item.device)
+          const { cap, dataCap, feature } = Candle_CAN.buildCap(item.device)
+          const suffix = !distinctNames && candidates.length > 1 ? ` (Ch${item.mi})` : ''
+          plans.push({
+            path: item.path,
+            label: `${item.name}${suffix}`,
+            name: item.name,
+            mi: item.mi,
+            channel: item.mi,
+            channelCount: 1,
+            mode,
+            busy: item.busy,
+            feature,
+            cap,
+            dataCap
+          })
+        }
+        if (
+          verbose &&
+          !forced &&
+          candidates.length > 1 &&
+          candidates.every((item) => item.icount === candidates[0].icount) &&
+          candidates[0].icount > 0
+        ) {
+          // Ambiguous: every interface reports the same device wide icount.
+          // If this device really carries all channels on a single interface,
+          // force it with ECUBUS_CANDLE_CHANNEL_MODE=channel.
+          const warnLine =
+            `candle group ${groupKey}: ${candidates.length} interfaces all report icount=` +
+            `${candidates[0].icount}, treated as one channel per interface ` +
+            `(set ECUBUS_CANDLE_CHANNEL_MODE=channel if it is a single multi-channel interface)`
+          if (Candle_CAN.lastGroupLog.get(`${groupKey}:warn`) !== warnLine) {
+            Candle_CAN.lastGroupLog.set(`${groupKey}:warn`, warnLine)
+            sysLog.warn(warnLine)
+          }
+        }
+      }
+
+      // Keep the remaining (busy / not openable) interfaces visible but disabled
+      for (const item of fresh) {
+        if (handled.has(item.device)) {
+          continue
+        }
+        const { cap, dataCap, feature } = Candle_CAN.buildCap(item.device)
+        plans.push({
+          path: item.path,
+          label: `${item.name} (Ch${item.mi})`,
+          name: item.name,
+          mi: item.mi,
+          channel: item.mi,
+          channelCount: 1,
+          mode: 'single',
+          busy: true,
+          feature,
+          cap,
+          dataCap
+        })
+      }
+
+      // Channels opened by us, replayed from the last healthy scan.
+      plans.push(...replay)
+
+      if (verbose) {
+        const logLine =
+          `candle group ${groupKey}: mode=${mode}, channels=${plans.length - groupStart}, ` +
+          `interfaces=[${items
+            .map((item) => `mi${item.mi}:icount=${item.icount}${item.busy ? ':busy' : ''}`)
+            .join(', ')}], ` +
+          `dconf=[${Candle_CAN.dconfHex((usable[0] ?? fresh[0] ?? items[0]).device)}]`
+        // Only log when the classification changed, the device list is
+        // re-enumerated on every UI refresh.
+        if (Candle_CAN.lastGroupLog.get(`${groupKey}:info`) !== logLine) {
+          Candle_CAN.lastGroupLog.set(`${groupKey}:info`, logLine)
+          sysLog.info(logLine)
+        }
+      }
+
+      // Remember the plan of a healthy scan, see the replay above.
+      if (usable.length > 0) {
+        const byPath = new Map<string, CandleChannelPlan[]>()
+        for (const plan of plans.slice(groupStart)) {
+          const list = byPath.get(plan.path)
+          if (list) {
+            list.push(plan)
+          } else {
+            byPath.set(plan.path, [plan])
+          }
+        }
+        byPath.forEach((list, path) => Candle_CAN.planCache.set(path, list))
+      }
+    }
+
+    return plans
+  }
+
   constructor(info: CanBaseInfo) {
     super()
     this.id = info.id
@@ -89,25 +543,60 @@ export class Candle_CAN extends CanBase {
       devicesArray.push(dev)
     }
 
-    const targetDevice = devicesArray.find((device) => {
-      const devPath = Candle.GetDevicePath(device)
-      return devPath === this.devicePath && device.interfaceNumber === this.channel
-    })
-
-    if (!targetDevice) {
-      throw new Error(`Device not found: path="${this.devicePath}", channel=${this.channel}`)
-    }
-
+    // A USB interface may carry several CAN channels, so the interface path is
+    // matched alone and the logical channel comes from the handle suffix.
     let deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
 
-    if (!deviceEntry) {
+    if (deviceEntry) {
+      // The interface is already opened by us. Reuse the channel mode recorded
+      // by the first opener: a rescan of an opened interface reports it as
+      // "in use" (dconf empty), so it can no longer be classified reliably.
+      deviceEntry.refCount++
+      this.channelMode = deviceEntry.mode
+      this.channelCount = deviceEntry.channelCount
+    } else {
+      const targetDevice = devicesArray.find(
+        (device) => Candle_CAN.readPath(device).path === this.devicePath
+      )
+
+      if (!targetDevice) {
+        throw new Error(`Device not found: path="${this.devicePath}", channel=${this.channel}`)
+      }
+
+      const plan = Candle_CAN.buildChannelPlans(devicesArray, false).find(
+        (item) => item.path === this.devicePath && item.channel === this.channel
+      )
+      if (plan) {
+        this.channelMode = plan.mode
+        this.channelCount = plan.channelCount
+      } else {
+        // The handle may be older than the current enumeration (e.g. channel
+        // numbering changed after a firmware update), fall back to the icount.
+        this.channelMode = (Number(targetDevice.dconf?.icount) || 0) >= 1 ? 'multi' : 'single'
+        this.channelCount = this.channelMode === 'multi' ? Number(targetDevice.dconf.icount) + 1 : 1
+        sysLog.warn(
+          `candle ${this.devicePath}: handle channel ${this.channel} not in current plan, ` +
+            `fallback to mode=${this.channelMode}`
+        )
+      }
+
       if (!Candle.candle_dev_open(targetDevice)) {
         throw new Error(`Failed to open device: ${this.devicePath}`)
       }
-      deviceEntry = { device: targetDevice, refCount: 1 }
+      deviceEntry = {
+        device: targetDevice,
+        refCount: 1,
+        mode: this.channelMode,
+        channelCount: this.channelCount
+      }
       Candle_CAN.openedDevices.set(this.devicePath, deviceEntry)
-    } else {
-      deviceEntry.refCount++
+    }
+
+    if (this.channelMode === 'multi' && this.channel >= this.channelCount) {
+      sysLog.warn(
+        `candle ${this.devicePath}: channel ${this.channel} out of range ` +
+          `(0..${this.channelCount - 1}), frames will be dropped`
+      )
     }
 
     this.target = deviceEntry.device
@@ -120,6 +609,7 @@ export class Candle_CAN extends CanBase {
 
     this.log = new CanLOG('CANABLE', this.info.name, this.id, this.event)
 
+    let tsfnRegistered = false
     try {
       // Use the device's actual clock frequency from BT_CONST for all calculations
       const cap = this.target.bt_const
@@ -157,9 +647,10 @@ export class Candle_CAN extends CanBase {
       const deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
       if (deviceEntry && deviceEntry.refCount === 1) {
         const candleInfo = {
-          channel_count: this.target.dconf.icount,
+          channel_count: (Number(this.target.dconf.icount) || 0) + 1,
           HW_version: `${(this.target.dconf.hw_version >> 24) & 0xff}.${(this.target.dconf.hw_version >> 16) & 0xff}.${(this.target.dconf.hw_version >> 8) & 0xff}`,
-          SW_version: `${(this.target.dconf.sw_version >> 16) & 0xff}.${(this.target.dconf.sw_version >> 8) & 0xff}.${(this.target.dconf.sw_version >> 0) & 0xff}`
+          SW_version: `${(this.target.dconf.sw_version >> 16) & 0xff}.${(this.target.dconf.sw_version >> 8) & 0xff}.${(this.target.dconf.sw_version >> 0) & 0xff}`,
+          dconf: Candle_CAN.dconfHex(this.target)
         }
         sysLog.info(`candle ${this.info.name}: ${JSON.stringify(candleInfo)}`)
         sysLog.info(
@@ -347,18 +838,17 @@ export class Candle_CAN extends CanBase {
         // throw new Error('Start channel failed')
       }
 
-      Candle.CreateTSFN(
-        this.channel,
-        this.id,
-        this.callback.bind(this),
-        this.errorCallback.bind(this)
-      )
-      if (!Candle.SetContextDevice(this.id, this.target)) {
+      Candle_CAN.registerChannel(this.devicePath, this.channel, this, this.channelMode)
+      tsfnRegistered = true
+      if (!Candle.SetContextDevice(this.devicePath, this.target)) {
         throw new Error('Set context device failed')
       }
 
       this.attachCanMessage(this.busloadCb)
     } catch (err) {
+      if (tsfnRegistered) {
+        Candle_CAN.unregisterChannel(this.devicePath, this.channel)
+      }
       Candle.candle_channel_stop(this.target, this.channel)
 
       const deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
@@ -552,78 +1042,34 @@ export class Candle_CAN extends CanBase {
     return []
   }
   static override getValidDevices(): CanDevice[] {
-    const devices: CanDevice[] = []
-    if (process.platform == 'win32') {
-      const rawList = this.getRawDeviceList()
-      for (const device of rawList) {
-        // const path = Candle.CharArray.frompointer(device.path)
-        // const buf = Buffer.alloc(256 * 2)
-        // for (let j = 0; j < 256 * 2; j++) {
-        //   const val = path.getitem(j)
-        //   if (val == 0) {
-        //     break
-        //   }
-        //   buf[j] = val
-        // }
-        // let pathStr = buf.toString('ascii').replace(/\0/g, '')
-        // //remove {xxxx} guid info, maybe {xxx no }
-        // pathStr = pathStr.replace(/\{.*\}/g, '')
-        // pathStr = pathStr.replace(/\{.*/g, '')
-        // 直接使用设备对象获取友好名称
-        const pathStr = Candle.GetDevicePath(device)
-        const friendlyNameStr = Candle.GetDeviceFriendlyName(device)
-
-        // Extract capability info from device bt_const (already populated during scan)
-        const cap = device.bt_const
-        const candleCap = {
-          feature: cap.feature,
-          fclk_can: cap.fclk_can,
-          tseg1_min: cap.tseg1_min,
-          tseg1_max: cap.tseg1_max,
-          tseg2_min: cap.tseg2_min,
-          tseg2_max: cap.tseg2_max,
-          sjw_max: cap.sjw_max,
-          brp_min: cap.brp_min,
-          brp_max: cap.brp_max,
-          brp_inc: cap.brp_inc
-        }
-
-        let candleDataCap = null
-        // Check if device supports CAN FD (feature bit 8 = 0x100)
-        if (cap.feature & 0x100) {
-          const dataCap = device.data_bt_const
-          candleDataCap = {
-            feature: dataCap.feature,
-            fclk_can: dataCap.fclk_can,
-            tseg1_min: dataCap.tseg1_min,
-            tseg1_max: dataCap.tseg1_max,
-            tseg2_min: dataCap.tseg2_min,
-            tseg2_max: dataCap.tseg2_max,
-            sjw_max: dataCap.sjw_max,
-            brp_min: dataCap.brp_min,
-            brp_max: dataCap.brp_max,
-            brp_inc: dataCap.brp_inc
-          }
-        }
-
-        devices.push({
-          label: friendlyNameStr,
-          id: `Candle_Ch${device.interfaceNumber}_${pathStr.substring(0, 8)}`,
-          handle: `${pathStr}|${device.interfaceNumber}`,
-          serialNumber: pathStr,
-          extra: {
-            candle: {
-              cap: candleCap,
-              dataCap: candleDataCap || undefined,
-              fdSupported: !!(cap.feature & 0x100),
-              Res: !!(cap.feature & 0x800)
-            }
-          }
-          // serialNumber: pathStr
-        })
-      }
+    if (process.platform != 'win32') {
+      return []
     }
-    return devices
+
+    const plans = Candle_CAN.buildChannelPlans(this.getRawDeviceList())
+
+    return plans.map((plan) => {
+      const pathStr = plan.path
+      return {
+        label: plan.label,
+        id: `Candle_Ch${plan.channel}_${pathStr.substring(0, 8)}`,
+        handle: `${pathStr}|${plan.channel}`,
+        serialNumber: pathStr,
+        busy: plan.busy,
+        extra: {
+          candle: {
+            cap: plan.cap,
+            dataCap: plan.dataCap,
+            fdSupported: !!(plan.feature & 0x100),
+            Res: !!(plan.feature & 0x800),
+            channel: plan.channel,
+            channelCount: plan.channelCount,
+            mode: plan.mode,
+            parentKey: plan.path
+          }
+        }
+      }
+    })
   }
 
   static override getLibVersion(): string {
@@ -632,7 +1078,7 @@ export class Candle_CAN extends CanBase {
       if (v) {
         return `SW:${(v.dconf.sw_version >> 16) & 0xff}.${(v.dconf.sw_version >> 8) & 0xff}.${(v.dconf.sw_version >> 0) & 0xff}
                 HW:${(v.dconf.hw_version >> 24) & 0xff}.${(v.dconf.hw_version >> 16) & 0xff}.${(v.dconf.hw_version >> 8) & 0xff}
-                channel:${v.dconf.icount}`
+                channel:${(Number(v.dconf.icount) || 0) + 1}`
       }
       return '1.0.0'
     } else {
@@ -663,7 +1109,7 @@ export class Candle_CAN extends CanBase {
     } else {
       this.closed = true
       this.log.close()
-      Candle.FreeTSFN(this.id)
+      Candle_CAN.unregisterChannel(this.devicePath, this.channel)
       Candle.candle_channel_stop(this.target, this.channel)
       const deviceEntry = Candle_CAN.openedDevices.get(this.devicePath)
       if (deviceEntry) {
@@ -772,7 +1218,7 @@ export class Candle_CAN extends CanBase {
         }
         frame.flags = falg
 
-        Candle.SendCANMsg(this.id, this.channel, frame)
+        Candle.SendCANMsg(this.devicePath, this.channel, frame)
       } catch (err: any) {
         const items = this.pendingBaseCmds.get(cmdId)
         if (items && items.length > 0) {

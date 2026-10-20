@@ -30,14 +30,19 @@ struct TxResult {
     int result;        // 发送结果
 };
 
-// 简化的上下文结构 - 只保留接收和发送
+// 上下文结构。
+// 一个 USB 接口只有一个上下文（一套 30 个 RX URB + 一个 TX 队列），
+// 该接口上承载的多个 CAN 通道由帧头里的 channel 字段在 JS 侧分发。
+// 因此 refCount 表示"有多少个逻辑通道正在使用这个接口"，
+// 最后一个通道释放时才真正停止线程。
 struct TsfnContext {
     // 基本配置
     bool closed;
-   
+
     candle_device_t* hdev;
-    uint8_t channel;
-    
+    uint8_t channel;   // 兼容字段，不再参与过滤
+    int refCount;      // 引用该上下文的逻辑通道数量
+
     // 接收相关
     std::thread rxThread;
     Napi::ThreadSafeFunction rxTsfn;
@@ -45,7 +50,7 @@ struct TsfnContext {
     // 发送相关
     std::thread txThread;
     moodycamel::BlockingConcurrentQueue<TxMessage> txQueue{10000};
-    
+
     // 错误回调
     Napi::ThreadSafeFunction errorTsfn;
 };
@@ -90,6 +95,8 @@ auto rxCallback = [](Napi::Env env, Napi::Function jsCallback, void* value) {
     msgObj.Set("DLC", Napi::Number::New(env, dlc));
     msgObj.Set("Flags", Napi::Number::New(env, frame->flags));
     msgObj.Set("FrameType", Napi::Number::New(env, frameType));
+    // 多通道设备（一个接口承载多路 CAN）靠该字段解复用
+    msgObj.Set("Channel", Napi::Number::New(env, frame->channel));
     //echo_id
     // msgObj.Set("EchoID", Napi::Number::New(env, frame->echo_id));
     
@@ -185,22 +192,33 @@ std::string __stdcall DLL GetDevicePath(candle_device_t* hdev) {
     if (!hdev) {
         return "";
     }
-    
-   
+
     // Create wstring with proper length
     std::wstring wDevicePath(hdev->path);
-    
+
     //convert wstring to string
     std::string devicePath(wDevicePath.begin(), wDevicePath.end());
-   
-    
+
+    // 追加父设备实例 ID（0x1f 分隔），供上层把同一物理设备的多个 USB
+    // 接口聚合分组；上层保存 handle 时只保留分隔符之前的部分。
+    std::string parentId(hdev->parent_id);
+    if (!parentId.empty()) {
+        devicePath += '\x1f';
+        devicePath += parentId;
+    }
+
     return devicePath;
 }
 
-// 获取设备友好名称的函数
+// 获取设备友好名称的函数。
+// 同一台设备的多个接口（一个接口一个通道）靠 iInterface 字符串区分，
+// 例如 "HScanT GS can0" ... "HScanT GS can3"。
 std::string __stdcall DLL GetDeviceFriendlyName(candle_device_t* hdev) {
     if (!hdev) {
         return "";
+    }
+    if (hdev->iface_name[0] != '\0') {
+        return std::string(hdev->iface_name);
     }
     return std::string(hdev->friendly_name);
 }
@@ -219,30 +237,53 @@ bool __stdcall DLL SetContextDevice(std::string name,candle_device_t* hdev){
     return false;
 }
 
-// 创建TSFN
+// 创建（或复用）TSFN。
+// 新签名: (name, rxCallback, errorCallback)，name 为 USB 接口路径
+// 旧签名兼容: (channel, name, rxCallback, errorCallback)
+// 同一 name 只创建一个上下文与其线程，多个逻辑通道共享（refCount）。
 void CreateTSFN(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-    
-    if (info.Length() < 4) {
-        throw Napi::Error::New(env, "Insufficient arguments. Expected: channel, name, rxCallback, errorCallback");
-    }
-   
-    uint8_t channel = info[0].As<Napi::Number>().Uint32Value();
-    Napi::String name = info[1].As<Napi::String>();
 
-    
-    
+    std::string name;
+    Napi::Function rxCallback;
+    Napi::Function errorCallback;
+
+    if (info.Length() >= 4 && !info[0].IsString()) {
+        name = info[1].As<Napi::String>().Utf8Value();
+        rxCallback = info[2].As<Napi::Function>();
+        errorCallback = info[3].As<Napi::Function>();
+    } else if (info.Length() >= 3) {
+        name = info[0].As<Napi::String>().Utf8Value();
+        rxCallback = info[1].As<Napi::Function>();
+        errorCallback = info[2].As<Napi::Function>();
+    } else {
+        throw Napi::Error::New(env, "Insufficient arguments. Expected: name, rxCallback, errorCallback");
+    }
+
+    std::lock_guard<std::mutex> lock(contextMapMutex);
+
+    auto it = tsfnContextMap.find(name);
+    if (it != tsfnContextMap.end()) {
+        // 同一接口上已经有其它通道在使用，仅增加引用计数
+        it->second->refCount++;
+        return;
+    }
+
     // 创建上下文
     auto context = new TsfnContext();
     context->closed = false;
-    context->channel = channel;
+    context->channel = 0;
+    context->refCount = 1;
+    context->hdev = nullptr;
 
+    std::string rxName = name + "_rx";
+    std::string errName = name + "_error";
 
     // 创建接收ThreadSafeFunction
     context->rxTsfn = Napi::ThreadSafeFunction::New(
         env,
-        info[2].As<Napi::Function>(),
-        (name.Utf8Value() + "_rx").data(),
+        rxCallback,
+        rxName.c_str(),
         0,  // 无限制队列大小
         1,  // 初始线程数
         context
@@ -251,47 +292,49 @@ void CreateTSFN(const Napi::CallbackInfo& info) {
     // 创建错误回调ThreadSafeFunction
     context->errorTsfn = Napi::ThreadSafeFunction::New(
         env,
-        info[3].As<Napi::Function>(),
-        (name.Utf8Value() + "_error").data(),
+        errorCallback,
+        errName.c_str(),
         0,  // 无限制队列大小
         1,  // 初始线程数
         context
     );
 
-    
     // 启动线程
     context->rxThread = std::thread(rxThreadEntry, context);
     context->txThread = std::thread(txThreadEntry, context);
-    
+
     // 存储上下文
-    {
-        std::lock_guard<std::mutex> lock(contextMapMutex);
-        tsfnContextMap[name.Utf8Value()] = context;
-    }
+    tsfnContextMap[name] = context;
 }
 
-// 释放TSFN
+// 释放TSFN。
+// 同一个接口上的多个通道共享上下文，只有最后一个通道释放时才真正停止线程。
 void FreeTSFN(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-    
+
     if (info.Length() < 1) {
         throw Napi::Error::New(env, "Insufficient arguments. Expected: name");
     }
 
-    Napi::String name = info[0].As<Napi::String>();
-  
-    
+    std::string name = info[0].As<Napi::String>().Utf8Value();
+
     TsfnContext* context = nullptr;
-    
+
     {
         std::lock_guard<std::mutex> lock(contextMapMutex);
-        auto it = tsfnContextMap.find(name.Utf8Value());
-        if (it != tsfnContextMap.end()) {
-            context = it->second;
-            tsfnContextMap.erase(it);
+        auto it = tsfnContextMap.find(name);
+        if (it == tsfnContextMap.end()) {
+            return;
         }
+        context = it->second;
+        context->refCount--;
+        if (context->refCount > 0) {
+            // 该接口上还有其它逻辑通道在使用
+            return;
+        }
+        tsfnContextMap.erase(it);
     }
-    
+
     if (context) {
         // 标记关闭
         context->closed = true;
@@ -344,6 +387,8 @@ bool __stdcall DLL SendCANMsg(std::string name, uint8_t ch,candle_frame_t *frame
 
     // 初始化candle_frame_t结构
     memcpy(&msg.frame, frame, sizeof(candle_frame_t));
+    // 通道号以调用参数为准，避免 JS 侧漏填
+    msg.frame.channel = ch;
     
     // 入队发送
     if (!context->txQueue.enqueue(msg)) {
